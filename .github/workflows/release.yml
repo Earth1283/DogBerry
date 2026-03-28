@@ -1,0 +1,66 @@
+name: Build & Release
+
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: write   # required to create releases and upload assets
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle.kts', 'gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Build shadow jar
+        run: ./gradlew shadowJar --no-daemon
+
+      - name: Determine version and jar path
+        id: meta
+        run: |
+          VERSION=$(./gradlew properties --no-daemon -q | grep "^version:" | awk '{print $2}')
+          JAR_PATH=$(ls build/libs/DogBerry-*-all.jar | head -1)
+          JAR_NAME=$(basename "$JAR_PATH")
+          SHORT_SHA=${GITHUB_SHA::7}
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "jar_path=${JAR_PATH}" >> "$GITHUB_OUTPUT"
+          echo "jar_name=${JAR_NAME}" >> "$GITHUB_OUTPUT"
+          echo "short_sha=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+          echo "tag=v${VERSION}-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: "DogBerry ${{ steps.meta.outputs.version }} (${{ steps.meta.outputs.short_sha }})"
+          body: |
+            **Automated build** from commit `${{ github.sha }}`.
+
+            ${{ github.event.head_commit.message }}
+
+            ### Installation
+            Drop `${{ steps.meta.outputs.jar_name }}` into your server's `plugins/` directory.
+            See [docs/DogBerry.rst](docs/DogBerry.rst) for full setup instructions.
+          files: ${{ steps.meta.outputs.jar_path }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true

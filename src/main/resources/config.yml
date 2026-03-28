@@ -1,0 +1,92 @@
+gemini:
+  # Your Gemini API key from https://aistudio.google.com
+  api-key: ""
+  model: "gemini-2.5-flash-preview-04-17"
+  # Maximum number of tool-call rounds per invocation before force-stopping
+  max-tool-depth: 20
+  # Alert in #dogberry-internal if a single invocation exceeds this cost (USD)
+  cost-alert-usd: 0.10
+
+discord:
+  # Bot token from https://discord.com/developers/applications
+  token: ""
+  # Your Discord server (guild) ID
+  guild-id: ""
+  # Trigger prefix — messages starting with this string will invoke DogBerry
+  # DogBerry also responds to @mentions regardless of prefix
+  trigger-prefix: "!dog"
+  # Map logical channel names → Discord channel IDs
+  # DogBerry uses these keys internally. You must fill in all four IDs.
+  channels:
+    server-admin: ""        # Where admins issue commands and receive approval requests
+    server-logs: ""         # Automated incident reports and unprompted posts
+    dogberry-internal: ""   # DogBerry's private journal (https://i.imgur.com/qmEpf.jpg)
+    plugin-releases: ""     # Announcements when new AI-written plugins are deployed
+
+# Serper.dev API key for miniSearch tool
+# Sign up at https://serper.dev — free tier available
+serper:
+  api-key: ""
+
+# Domains DogBerry is allowed to fetch via miniFetch
+# Adding a domain here grants DogBerry HTTP GET access to it
+fetch:
+  allowlist:
+    - spigotmc.org
+    - modrinth.com
+    - papermc.io
+    - docs.papermc.io
+    - github.com
+    - raw.githubusercontent.com
+    - hub.spigotmc.org
+    - repo.maven.apache.org
+    - wiki.vg
+
+# Wake timer constraints
+timers:
+  max-concurrent: 3
+  max-duration-seconds: 21600  # 6 hours
+
+# Path to the SQLite database file (relative to server root)
+memory:
+  database-path: "plugins/DogBerry/memory.db"
+
+# Commands DogBerry is allowed to run via runSafeCommand
+# Anything NOT matching a prefix here will be rejected
+safe-commands:
+  whitelist-prefixes:
+    - "say "
+    - "tell "
+    - "msg "
+    - "weather "
+    - "time set "
+    - "time add "
+    - "difficulty "
+    - "gamemode "
+    - "give "
+    - "tp "
+    - "teleport "
+    - "effect "
+    - "enchant "
+    - "xp "
+    - "experience "
+    - "gamerule "
+    - "setworldspawn"
+    - "spawnpoint "
+    - "summon "
+    - "list"
+    - "tps"
+    - "plugins"
+    - "version"
+    - "pl"
+
+# Settings for AI-written plugin development
+dev-tools:
+  # Set to false to disable writePlugin/buildPlugin/deployPlugin tools entirely
+  enabled: true
+  # Directory where AI-written plugin projects are staged (relative to server root)
+  plugin-src-path: "plugins/src"
+  # Gradle build timeout in seconds
+  build-timeout-seconds: 120
+  # Dev tools require a JDK (not just JRE). If javac is not found in PATH,
+  # these tools will return a helpful error message instead of crashing.

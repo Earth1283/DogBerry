@@ -1,0 +1,18 @@
+name: DogBerry
+version: '${version}'
+main: io.github.Earth1283.dogBerry.DogBerry
+api-version: '1.21'
+load: STARTUP
+authors: [ Earth1283 ]
+description: Autonomous Minecraft server management agent powered by Gemini AI.
+
+commands:
+  dogberry:
+    description: Reload DogBerry configuration.
+    usage: /dogberry reload
+    permission: dogberry.admin
+
+permissions:
+  dogberry.admin:
+    description: Allows management of the DogBerry agent.
+    default: op
