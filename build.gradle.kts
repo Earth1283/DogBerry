@@ -36,7 +36,8 @@ tasks {
         relocate("net.dv8tion.jda", "io.github.Earth1283.dogBerry.shade.jda")
         relocate("com.fasterxml.jackson", "io.github.Earth1283.dogBerry.shade.jackson")
         relocate("org.apache.commons.collections4", "io.github.Earth1283.dogBerry.shade.collections4")
-        relocate("org.sqlite", "io.github.Earth1283.dogBerry.shade.sqlite")
+        // org.sqlite must NOT be relocated — sqlite-jdbc uses JNI and native method names
+        // are derived from the Java class name; relocating breaks the JNI binding.
         relocate("net.objecthunter.exp4j", "io.github.Earth1283.dogBerry.shade.exp4j")
         relocate("kotlinx.serialization", "io.github.Earth1283.dogBerry.shade.serialization")
 

@@ -9,7 +9,6 @@ class MemoryStore(dbPath: String) {
     private val connection: Connection
 
     init {
-        // Explicit class loading to ensure relocated sqlite-jdbc registers as a JDBC driver
         Class.forName("org.sqlite.JDBC")
         val file = File(dbPath)
         file.parentFile?.mkdirs()

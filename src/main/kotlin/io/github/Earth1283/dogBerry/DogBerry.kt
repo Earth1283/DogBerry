@@ -77,7 +77,7 @@ class DogBerry : JavaPlugin(), Listener {
     }
 
     override fun onDisable() {
-        timerManager.cancelAll(this)
+        if (::timerManager.isInitialized) timerManager.cancelAll(this)
         if (::discord.isInitialized) discord.shutdown()
         if (::memory.isInitialized) memory.close()
         logger.info("DogBerry offline.")
