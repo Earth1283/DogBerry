@@ -4,6 +4,8 @@ import io.github.Earth1283.dogBerry.config.DogBerryConfig
 import io.github.Earth1283.dogBerry.discord.ApprovalManager
 import io.github.Earth1283.dogBerry.discord.DiscordManager
 import io.github.Earth1283.dogBerry.gemini.GeminiClient
+import io.github.Earth1283.dogBerry.gemini.LlmClient
+import io.github.Earth1283.dogBerry.gemini.OpenRouterClient
 import io.github.Earth1283.dogBerry.gemini.ToolRegistry
 import io.github.Earth1283.dogBerry.tools.ToolDispatcher
 import io.github.Earth1283.dogBerry.tools.memory.MemoryStore
@@ -28,7 +30,7 @@ class DogBerry : JavaPlugin(), Listener {
         private set
     lateinit var costTracker: CostTracker
         private set
-    lateinit var geminiClient: GeminiClient
+    lateinit var geminiClient: LlmClient
         private set
     val toolRegistry: ToolRegistry get() = ToolRegistry
     lateinit var toolDispatcher: ToolDispatcher
@@ -59,7 +61,10 @@ class DogBerry : JavaPlugin(), Listener {
         val serverRoot = server.worldContainer.parentFile ?: File(".")
         memory = MemoryStore(File(serverRoot, cfg.memoryDatabasePath).path)
         costTracker = CostTracker(memory)
-        geminiClient = GeminiClient(cfg)
+        geminiClient = when (cfg.llmProvider) {
+            "openrouter" -> OpenRouterClient(cfg)
+            else -> GeminiClient(cfg)
+        }
         timerManager = TimerManager(cfg.timersMaxConcurrent, cfg.timersMaxDurationSeconds)
         approvalManager = ApprovalManager(this)
         toolDispatcher = ToolDispatcher(this)

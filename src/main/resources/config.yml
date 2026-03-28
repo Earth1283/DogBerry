@@ -1,11 +1,25 @@
+llm:
+  # Which LLM provider to use: gemini | openrouter
+  provider: "gemini"
+
 gemini:
   # Your Gemini API key from https://aistudio.google.com
   api-key: ""
+  # Additional keys tried in order when the primary key hits a quota limit
+  fallback-api-keys: []
+  # Order in which fallback keys are tried: sequential | random
+  fallback-key-order: "sequential"
   model: "gemini-2.5-flash-preview-04-17"
   # Maximum number of tool-call rounds per invocation before force-stopping
   max-tool-depth: 20
   # Alert in #dogberry-internal if a single invocation exceeds this cost (USD)
   cost-alert-usd: 0.10
+
+openrouter:
+  # API key from https://openrouter.ai/keys
+  api-key: ""
+  # Any model slug available on OpenRouter, e.g. google/gemini-2.5-flash-preview
+  model: "google/gemini-2.5-flash-preview"
 
 discord:
   # Bot token from https://discord.com/developers/applications
