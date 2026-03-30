@@ -75,6 +75,102 @@ object ToolRegistry {
             }
         ),
 
+        FunctionDeclaration(
+            name = "getPluginList",
+            description = "Returns the list of all installed plugins with their name, version, " +
+                    "enabled status, description, and authors.",
+            parameters = emptyObject()
+        ),
+        FunctionDeclaration(
+            name = "kickPlayer",
+            description = "Kicks an online player from the server with a reason. " +
+                    "Calls requestHumanApproval automatically before executing.",
+            parameters = buildJsonObject {
+                put("type", "object")
+                putJsonObject("properties") {
+                    putJsonObject("name") {
+                        put("type", "string")
+                        put("description", "Exact player name (case-sensitive).")
+                    }
+                    putJsonObject("reason") {
+                        put("type", "string")
+                        put("description", "Kick reason shown to the player.")
+                    }
+                }
+                putJsonArray("required") { add("name"); add("reason") }
+            }
+        ),
+        FunctionDeclaration(
+            name = "banPlayer",
+            description = "Permanently bans a player by name. " +
+                    "Calls requestHumanApproval automatically before executing. " +
+                    "For temporary bans use runSafeCommand with your server's tempban command (e.g. EssentialsX).",
+            parameters = buildJsonObject {
+                put("type", "object")
+                putJsonObject("properties") {
+                    putJsonObject("name") {
+                        put("type", "string")
+                        put("description", "Exact player name.")
+                    }
+                    putJsonObject("reason") {
+                        put("type", "string")
+                        put("description", "Ban reason.")
+                    }
+                }
+                putJsonArray("required") { add("name"); add("reason") }
+            }
+        ),
+        FunctionDeclaration(
+            name = "unbanPlayer",
+            description = "Removes an existing name ban. Calls requestHumanApproval automatically.",
+            parameters = buildJsonObject {
+                put("type", "object")
+                putJsonObject("properties") {
+                    putJsonObject("name") {
+                        put("type", "string")
+                        put("description", "Player name to unban.")
+                    }
+                }
+                putJsonArray("required") { add("name") }
+            }
+        ),
+        FunctionDeclaration(
+            name = "addToWhitelist",
+            description = "Adds a player to the server whitelist. Calls requestHumanApproval automatically.",
+            parameters = buildJsonObject {
+                put("type", "object")
+                putJsonObject("properties") {
+                    putJsonObject("name") {
+                        put("type", "string")
+                        put("description", "Player name to whitelist.")
+                    }
+                    putJsonObject("reason") {
+                        put("type", "string")
+                        put("description", "Reason for whitelisting.")
+                    }
+                }
+                putJsonArray("required") { add("name"); add("reason") }
+            }
+        ),
+        FunctionDeclaration(
+            name = "removeFromWhitelist",
+            description = "Removes a player from the server whitelist. Calls requestHumanApproval automatically.",
+            parameters = buildJsonObject {
+                put("type", "object")
+                putJsonObject("properties") {
+                    putJsonObject("name") {
+                        put("type", "string")
+                        put("description", "Player name to remove from whitelist.")
+                    }
+                    putJsonObject("reason") {
+                        put("type", "string")
+                        put("description", "Reason for removal.")
+                    }
+                }
+                putJsonArray("required") { add("name"); add("reason") }
+            }
+        ),
+
         // ── Filesystem tools ─────────────────────────────────────────────────
         FunctionDeclaration(
             name = "miniGrep",

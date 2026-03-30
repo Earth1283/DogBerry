@@ -17,7 +17,11 @@ import io.github.Earth1283.dogBerry.tools.memory.WriteMemTool
 import io.github.Earth1283.dogBerry.tools.meta.GetDogberryCostTool
 import io.github.Earth1283.dogBerry.tools.network.MiniFetchTool
 import io.github.Earth1283.dogBerry.tools.network.MiniSearchTool
+import io.github.Earth1283.dogBerry.tools.player.BanPlayerTool
+import io.github.Earth1283.dogBerry.tools.player.KickPlayerTool
+import io.github.Earth1283.dogBerry.tools.player.WhitelistTool
 import io.github.Earth1283.dogBerry.tools.server.GetPlayerListTool
+import io.github.Earth1283.dogBerry.tools.server.GetPluginListTool
 import io.github.Earth1283.dogBerry.tools.server.GetRecentLogsTool
 import io.github.Earth1283.dogBerry.tools.server.GetServerStatsTool
 import io.github.Earth1283.dogBerry.tools.server.RunSafeCommandTool
@@ -69,6 +73,11 @@ class ToolDispatcher(private val plugin: DogBerry) {
     private val sendDiscordMessage by lazy { SendDiscordMessageTool(plugin) }
     private val getDogberryCost by lazy { GetDogberryCostTool(plugin) }
 
+    private val kickPlayer by lazy { KickPlayerTool(plugin) }
+    private val banPlayer by lazy { BanPlayerTool(plugin) }
+    private val whitelist by lazy { WhitelistTool(plugin) }
+    private val getPluginList by lazy { GetPluginListTool(plugin) }
+
     fun dispatch(name: String, args: JsonObject): JsonObject {
         plugin.logger.info("Tool call: $name")
         return when (name) {
@@ -76,6 +85,12 @@ class ToolDispatcher(private val plugin: DogBerry) {
             "getServerStats" -> getServerStats.execute(args)
             "getRecentLogs" -> getRecentLogs.execute(args)
             "runSafeCommand" -> runSafeCommand.execute(args)
+            "getPluginList" -> getPluginList.execute(args)
+            "kickPlayer" -> kickPlayer.execute(args)
+            "banPlayer" -> banPlayer.executeBan(args)
+            "unbanPlayer" -> banPlayer.executeUnban(args)
+            "addToWhitelist" -> whitelist.executeAdd(args)
+            "removeFromWhitelist" -> whitelist.executeRemove(args)
             "requestHumanApproval" -> plugin.approvalManager.requestApprovalTool(args)
 
             "miniGrep" -> miniGrep.execute(args)

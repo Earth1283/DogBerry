@@ -16,6 +16,7 @@ class DogBerryConfig(private val cfg: FileConfiguration) {
     // OpenRouter
     val openRouterApiKey: String get() = cfg.getString("openrouter.api-key", "")!!
     val openRouterModel: String get() = cfg.getString("openrouter.model", "google/gemini-2.5-flash-preview")!!
+    val openRouterMaxTokens: Int get() = cfg.getInt("openrouter.max-tokens", 16000)
     val geminiMaxToolDepth: Int get() = cfg.getInt("gemini.max-tool-depth", 20)
     val geminiCostAlertUsd: Double get() = cfg.getDouble("gemini.cost-alert-usd", 0.10)
 
@@ -49,6 +50,12 @@ class DogBerryConfig(private val cfg: FileConfiguration) {
     val devToolsEnabled: Boolean get() = cfg.getBoolean("dev-tools.enabled", true)
     val devToolsPluginSrcPath: String get() = cfg.getString("dev-tools.plugin-src-path", "plugins/src")!!
     val devToolsBuildTimeoutSeconds: Long get() = cfg.getLong("dev-tools.build-timeout-seconds", 120L)
+
+    // RBAC — re-parsed each time DogBerryConfig is constructed (i.e. on hot-reload)
+    val rbac: RbacConfig = RbacConfig(cfg.getConfigurationSection("rbac"))
+
+    // Monitoring
+    val monitoring: MonitoringConfig = MonitoringConfig.from(cfg.getConfigurationSection("monitoring"))
 
     fun validate(): List<String> {
         val errors = mutableListOf<String>()

@@ -17,10 +17,17 @@ class AgentLoop(private val plugin: DogBerry) {
 
     /**
      * Runs a full Gemini tool-call loop on the calling thread (must be async).
+     * [allowedTools] restricts which tools are exposed to the LLM. null = all tools.
      * [replyHandler] is called exactly once with the final text response.
      */
-    fun invoke(userMessage: String, replyHandler: (String) -> Unit) {
+    fun invoke(userMessage: String, allowedTools: Set<String>? = null, replyHandler: (String) -> Unit) {
         costTracker.resetInvocation()
+
+        val toolDeclarations = if (allowedTools == null) {
+            plugin.toolRegistry.declarations
+        } else {
+            plugin.toolRegistry.declarations.filter { it.name in allowedTools }
+        }
 
         val contents = mutableListOf(
             GeminiContent("user", listOf(GeminiPart.text(userMessage)))
@@ -34,7 +41,7 @@ class AgentLoop(private val plugin: DogBerry) {
                     geminiClient.generateContent(
                         contents = contents,
                         systemInstruction = SystemPrompt.build(),
-                        tools = plugin.toolRegistry.declarations
+                        tools = toolDeclarations
                     )
                 } catch (e: Exception) {
                     plugin.logger.warning("Gemini API error: ${e.message}")

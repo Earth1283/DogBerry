@@ -20,6 +20,7 @@ openrouter:
   api-key: ""
   # Any model slug available on OpenRouter, e.g. google/gemini-2.5-flash-preview
   model: "google/gemini-2.5-flash-preview"
+  max-tokens: 16000
 
 discord:
   # Bot token from https://discord.com/developers/applications
@@ -104,3 +105,88 @@ dev-tools:
   build-timeout-seconds: 120
   # Dev tools require a JDK (not just JRE). If javac is not found in PATH,
   # these tools will return a helpful error message instead of crashing.
+
+# Role-based access control
+# Controls which Discord users can invoke DogBerry and which tools they can use.
+#
+# Tool names (use these in allowed-tools lists):
+#   Read-only:  getPlayerList, getServerStats, getRecentLogs, getDogberryCost,
+#               getPluginList, readMem, listMem, calc
+#   Moderate:   runSafeCommand, kickPlayer, miniGrep, readFile, miniSearch, miniFetch
+#   Admin:      banPlayer, unbanPlayer, addToWhitelist, removeFromWhitelist,
+#               writeMem, deleteMem, wakeMeUpIn, sendDiscordMessage,
+#               writeFile, writePlugin, buildPlugin, deployPlugin, getGradleOutput,
+#               requestHumanApproval
+#
+rbac:
+  # Fallback tier for users whose Discord roles are not mapped below.
+  # Use a tier name, "*" (all tools), or "none" (deny all).
+  default-tier: "none"
+
+  # Named tiers — define once, reference by name in roles below
+  tiers:
+    observer:
+      allowed-tools:
+        - getPlayerList
+        - getServerStats
+        - getRecentLogs
+        - getDogberryCost
+        - getPluginList
+        - calc
+    moderator:
+      allowed-tools:
+        - getPlayerList
+        - getServerStats
+        - getRecentLogs
+        - getDogberryCost
+        - getPluginList
+        - calc
+        - runSafeCommand
+        - kickPlayer
+        - readMem
+        - listMem
+        - miniGrep
+        - miniSearch
+        - miniFetch
+    admin:
+      allowed-tools: "*"
+
+  # Map Discord role IDs to a tier or an inline tool list (or both — they are unioned).
+  # To find a role ID: Discord → Server Settings → Roles → right-click → Copy ID
+  # (requires Developer Mode enabled in Discord settings)
+  roles: {}
+  # Example:
+  # roles:
+  #   "123456789012345678":   # Admin role ID
+  #     tier: admin
+  #   "234567890123456789":   # Moderator role ID
+  #     tier: moderator
+  #   "345678901234567890":   # Custom role with specific tools
+  #     tier: observer
+  #     allowed-tools:
+  #       - runSafeCommand
+
+# Proactive monitoring — DogBerry watches the server and alerts Discord autonomously
+monitoring:
+  # Set to false to disable all proactive monitoring
+  enabled: true
+  # How often to check server health (in seconds)
+  check-interval-seconds: 30
+  # Discord channel ID to post alerts to. Leave blank to use server-admin channel.
+  alert-channel: ""
+  # Minimum seconds between repeated alerts of the same type (prevents spam)
+  alert-cooldown-seconds: 300
+  thresholds:
+    # Alert when 1-minute TPS falls below these values
+    tps-warning: 15.0
+    tps-critical: 10.0
+    # Alert when JVM memory usage exceeds these percentages
+    memory-warning-percent: 80.0
+    memory-critical-percent: 95.0
+  daily-digest:
+    # Post a daily server summary embed
+    enabled: true
+    # Hour of day to post (0–23, server local time). 0 = midnight.
+    hour: 0
+    # Channel for the digest. Leave blank to use alert-channel (or server-admin).
+    channel: ""

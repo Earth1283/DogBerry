@@ -11,6 +11,7 @@ import io.github.Earth1283.dogBerry.tools.ToolDispatcher
 import io.github.Earth1283.dogBerry.tools.memory.MemoryStore
 import io.github.Earth1283.dogBerry.tools.time.TimerManager
 import io.github.Earth1283.dogBerry.agent.CostTracker
+import io.github.Earth1283.dogBerry.monitoring.MonitoringService
 import org.bukkit.command.Command
 import org.bukkit.command.CommandSender
 import org.bukkit.event.EventHandler
@@ -41,13 +42,18 @@ class DogBerry : JavaPlugin(), Listener {
         private set
     lateinit var timerManager: TimerManager
         private set
+    lateinit var monitoringService: MonitoringService
+        private set
 
     /** Maps player UUID → join timestamp (ms). Thread-safe. */
     val playerJoinTimes = ConcurrentHashMap<UUID, Long>()
 
     override fun onEnable() {
-        // Load configuration
+        // Load configuration — copyDefaults writes any keys missing from the
+        // existing file (e.g. after a plugin update adds new options)
         saveDefaultConfig()
+        config.options().copyDefaults(true)
+        saveConfig()
         cfg = DogBerryConfig(config)
 
         val errors = cfg.validate()
@@ -76,12 +82,15 @@ class DogBerry : JavaPlugin(), Listener {
         server.scheduler.runTaskAsynchronously(this) { _ ->
             discord = DiscordManager(this)
             discord.start()
+            monitoringService = MonitoringService(this)
+            monitoringService.start()
         }
 
         logger.info("DogBerry is watching. This was a mistake.")
     }
 
     override fun onDisable() {
+        if (::monitoringService.isInitialized) monitoringService.stop()
         if (::timerManager.isInitialized) timerManager.cancelAll(this)
         if (::discord.isInitialized) discord.shutdown()
         if (::memory.isInitialized) memory.close()
@@ -114,6 +123,8 @@ class DogBerry : JavaPlugin(), Listener {
         }
 
         reloadConfig()
+        config.options().copyDefaults(true)
+        saveConfig()
         cfg = DogBerryConfig(config)
         val errors = cfg.validate()
         if (errors.isEmpty()) {
@@ -121,6 +132,12 @@ class DogBerry : JavaPlugin(), Listener {
         } else {
             sender.sendMessage("Config reloaded with ${errors.size} issue(s):")
             errors.forEach { sender.sendMessage("  - $it") }
+        }
+        // Restart monitoring service with updated config
+        if (::monitoringService.isInitialized) {
+            monitoringService.stop()
+            monitoringService = MonitoringService(this)
+            monitoringService.start()
         }
         return true
     }

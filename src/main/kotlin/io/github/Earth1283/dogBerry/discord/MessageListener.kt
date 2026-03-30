@@ -37,10 +37,22 @@ class MessageListener(private val plugin: DogBerry) : ListenerAdapter() {
         val channel = event.channel
         val authorName = event.author.name
 
+        // RBAC: resolve which tools this user is allowed to use
+        val member = event.member
+        val allowedTools = if (member != null) {
+            RbacChecker(plugin.cfg.rbac).getAllowedTools(member)
+        } else {
+            plugin.cfg.rbac.defaultAllowedTools
+        }
+        if (allowedTools != null && allowedTools.isEmpty()) {
+            channel.sendMessage("You don't have permission to use DogBerry.").queue()
+            return
+        }
+
         // Show typing indicator and dispatch to async task
         channel.sendTyping().queue()
         plugin.server.scheduler.runTaskAsynchronously(plugin) { _ ->
-            agentLoop.invoke("[$authorName] $userMessage") { response ->
+            agentLoop.invoke("[$authorName] $userMessage", allowedTools) { response ->
                 sendResponse(channel as? TextChannel, response)
             }
         }
@@ -50,14 +62,25 @@ class MessageListener(private val plugin: DogBerry) : ListenerAdapter() {
         if (event.name != "dogberry") return
 
         val prompt = event.getOption("prompt")?.asString ?: return
+
+        // RBAC: resolve which tools this user is allowed to use
+        val member = event.member
+        val allowedTools = if (member != null) {
+            RbacChecker(plugin.cfg.rbac).getAllowedTools(member)
+        } else {
+            plugin.cfg.rbac.defaultAllowedTools
+        }
+        if (allowedTools != null && allowedTools.isEmpty()) {
+            event.reply("You don't have permission to use DogBerry.").setEphemeral(true).queue()
+            return
+        }
+
         event.deferReply().queue()
 
         plugin.server.scheduler.runTaskAsynchronously(plugin) { _ ->
-            agentLoop.invoke("[${event.user.name}] $prompt") { response ->
-                // Split response if it exceeds Discord's 2000-char limit
-                splitMessage(response).forEachIndexed { i, chunk ->
-                    if (i == 0) event.hook.sendMessage(chunk).queue()
-                    else event.hook.sendMessage(chunk).queue()
+            agentLoop.invoke("[${event.user.name}] $prompt", allowedTools) { response ->
+                splitMessage(response).forEach { chunk ->
+                    event.hook.sendMessage(chunk).queue()
                 }
             }
         }
