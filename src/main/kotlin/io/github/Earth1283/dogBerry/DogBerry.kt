@@ -12,6 +12,7 @@ import io.github.Earth1283.dogBerry.tools.memory.MemoryStore
 import io.github.Earth1283.dogBerry.tools.time.TimerManager
 import io.github.Earth1283.dogBerry.agent.CostTracker
 import io.github.Earth1283.dogBerry.monitoring.MonitoringService
+import net.kyori.adventure.text.minimessage.MiniMessage
 import org.bukkit.command.Command
 import org.bukkit.command.CommandSender
 import org.bukkit.event.EventHandler
@@ -118,27 +119,71 @@ class DogBerry : JavaPlugin(), Listener {
             return true
         }
         if (args.isEmpty() || args[0] != "reload") {
-            sender.sendMessage("Usage: /dogberry reload")
+            sender.sendMessage(mm("<red>Usage: /dogberry reload</red>"))
             return true
         }
+
+        sender.sendMessage(mm("<gold><bold>DogBerry</bold></gold> <yellow>Reloading config...</yellow>"))
 
         reloadConfig()
         config.options().copyDefaults(true)
         saveConfig()
         cfg = DogBerryConfig(config)
+
+        // ── Config summary ────────────────────────────────────────────────────
+        val model = if (cfg.llmProvider == "openrouter") cfg.openRouterModel else cfg.geminiModel
+        sender.sendMessage(mm(
+            "  <gray>LLM:</gray> <white>${cfg.llmProvider}</white> <dark_gray>($model)</dark_gray>"
+        ))
+
+        val rbac = cfg.rbac
+        val defaultDesc = when (rbac.defaultAllowedTools) {
+            null -> "<green>*</green> <dark_gray>(all tools)</dark_gray>"
+            else -> if (rbac.defaultAllowedTools.isEmpty()) "<red>none</red> <dark_gray>(deny all)</dark_gray>"
+                    else "<white>${rbac.defaultAllowedTools.size} tools</white>"
+        }
+        sender.sendMessage(mm(
+            "  <gray>RBAC:</gray> <white>${rbac.tierCount}</white> <dark_gray>tier(s),</dark_gray>" +
+            " <white>${rbac.roleMappingCount}</white> <dark_gray>role mapping(s), default:</dark_gray> $defaultDesc"
+        ))
+
+        val mon = cfg.monitoring
+        val monDesc = if (mon.enabled)
+            "<green>enabled</green> <dark_gray>(${mon.checkIntervalSeconds}s interval, digest at ${mon.dailyDigest.hour}:00)</dark_gray>"
+        else
+            "<red>disabled</red>"
+        sender.sendMessage(mm("  <gray>Monitoring:</gray> $monDesc"))
+
+        sender.sendMessage(mm(
+            "  <gray>Timers:</gray> <white>max ${cfg.timersMaxConcurrent}</white>" +
+            " <dark_gray>concurrent, up to</dark_gray> <white>${cfg.timersMaxDurationSeconds / 3600}h</white>"
+        ))
+
+        sender.sendMessage(mm(
+            "  <gray>Dev tools:</gray> " +
+            if (cfg.devToolsEnabled) "<green>enabled</green>" else "<yellow>disabled</yellow>"
+        ))
+
+        // ── Validation ────────────────────────────────────────────────────────
         val errors = cfg.validate()
         if (errors.isEmpty()) {
-            sender.sendMessage("DogBerry config reloaded.")
+            sender.sendMessage(mm("<green>✔ Config reloaded successfully.</green>"))
         } else {
-            sender.sendMessage("Config reloaded with ${errors.size} issue(s):")
-            errors.forEach { sender.sendMessage("  - $it") }
+            sender.sendMessage(mm("<red>✗ ${errors.size} issue(s) found:</red>"))
+            errors.forEach { sender.sendMessage(mm("  <red>• $it</red>")) }
         }
-        // Restart monitoring service with updated config
+
+        // ── Restart monitoring service ────────────────────────────────────────
         if (::monitoringService.isInitialized) {
             monitoringService.stop()
             monitoringService = MonitoringService(this)
             monitoringService.start()
+            sender.sendMessage(mm("  <dark_gray>Monitoring service restarted.</dark_gray>"))
         }
+
         return true
     }
+
+    private val mm = MiniMessage.miniMessage()
+    private fun mm(s: String) = mm.deserialize(s)
 }

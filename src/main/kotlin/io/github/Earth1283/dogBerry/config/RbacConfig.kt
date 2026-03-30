@@ -41,6 +41,9 @@ class RbacConfig(section: ConfigurationSection?) {
         }
     }
 
+    val tierCount: Int get() = tiers.size
+    val roleMappingCount: Int get() = roleMap.size
+
     /**
      * Default tool access for users whose Discord roles have no mapping.
      * Derived from `default-tier`. "none"/blank → empty set (deny all).
