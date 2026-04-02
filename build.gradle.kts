@@ -1,8 +1,8 @@
 plugins {
     kotlin("jvm") version "2.3.20"
     kotlin("plugin.serialization") version "2.3.20"
-    id("com.gradleup.shadow") version "8.3.0"
-    id("xyz.jpenilla.run-paper") version "2.3.1"
+    id("com.gradleup.shadow") version "9.4.1"
+    id("xyz.jpenilla.run-paper") version "3.0.2"
 }
 
 group = "io.github.Earth1283"
