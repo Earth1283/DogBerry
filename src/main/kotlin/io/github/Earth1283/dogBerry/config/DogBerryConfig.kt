@@ -43,6 +43,7 @@ class DogBerryConfig(private val cfg: FileConfiguration) {
     val memoryDatabasePath: String get() = cfg.getString("memory.database-path", "plugins/DogBerry/memory.db")!!
 
     // Safe commands
+    val safeCommandApprovalMode: Boolean get() = cfg.getBoolean("safe-commands.approval-mode", false)
     val safeCommandPrefixes: List<String> get() =
         cfg.getStringList("safe-commands.whitelist-prefixes")
 

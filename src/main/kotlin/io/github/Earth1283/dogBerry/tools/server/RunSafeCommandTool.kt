@@ -8,6 +8,8 @@ import kotlinx.serialization.json.put
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 
+import io.github.Earth1283.dogBerry.discord.ApprovalManager
+
 class RunSafeCommandTool(private val plugin: DogBerry) {
 
     fun execute(args: JsonObject): JsonObject {
@@ -19,9 +21,32 @@ class RunSafeCommandTool(private val plugin: DogBerry) {
             command.lowercase().startsWith(prefix.lowercase())
         }
         if (!allowed) {
-            return buildJsonObject {
-                put("error", "Command '$command' is not on the safe-command whitelist. " +
-                        "Use requestHumanApproval for destructive commands.")
+            if (plugin.cfg.safeCommandApprovalMode) {
+                val result = plugin.approvalManager.requestCommandApproval(command)
+                when (result) {
+                    ApprovalManager.CommandApprovalResult.ALLOW_ALL -> {
+                        val baseCommand = command.trim().split(" ").firstOrNull() ?: command
+                        val newPrefix = "$baseCommand "
+                        val currentList = plugin.config.getStringList("safe-commands.whitelist-prefixes")
+                        if (!currentList.contains(newPrefix) && !currentList.contains(baseCommand)) {
+                            currentList.add(newPrefix)
+                            plugin.config.set("safe-commands.whitelist-prefixes", currentList)
+                            plugin.saveConfig()
+                        }
+                    }
+                    ApprovalManager.CommandApprovalResult.ALLOW -> {
+                        // proceed
+                    }
+                    ApprovalManager.CommandApprovalResult.DENY,
+                    ApprovalManager.CommandApprovalResult.TIMEOUT -> {
+                        return buildJsonObject { put("error", "Command '$command' was denied by an admin or timed out.") }
+                    }
+                }
+            } else {
+                return buildJsonObject {
+                    put("error", "Command '$command' is not on the safe-command whitelist. " +
+                            "Use requestHumanApproval for destructive commands.")
+                }
             }
         }
 

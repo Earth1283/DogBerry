@@ -2,7 +2,7 @@
 DogBerry
 =========
 
-Autonomous Minecraft server management agent.
+Autonomous Minecraft server management agent that abuses Gemini, written by Claude.
 Drop it in ``plugins/``. Give it API keys. Regret nothing.
 
 .. image:: https://img.shields.io/github/v/release/Earth1283/DogBerry?label=release

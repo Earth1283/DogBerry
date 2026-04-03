@@ -69,6 +69,9 @@ memory:
 # Commands DogBerry is allowed to run via runSafeCommand
 # Anything NOT matching a prefix here will be rejected
 safe-commands:
+  # When true, unlisted commands trigger an approval request in Discord
+  # instead of immediately failing.
+  approval-mode: false
   whitelist-prefixes:
     - "say "
     - "tell "

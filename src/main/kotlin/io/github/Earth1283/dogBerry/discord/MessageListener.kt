@@ -90,13 +90,19 @@ class MessageListener(private val plugin: DogBerry) : ListenerAdapter() {
         val customId = event.componentId
         val isApprove = customId.startsWith("approve:")
         val isDeny = customId.startsWith("deny:")
-        if (!isApprove && !isDeny) return
+        val isApproveAll = customId.startsWith("approve-all:")
+        if (!isApprove && !isDeny && !isApproveAll) return
 
-        val approvalId = if (isApprove) customId.removePrefix("approve:") else customId.removePrefix("deny:")
-        val approved = isApprove
+        val approvalId = customId.substringAfter(":")
+
+        val approved = isApprove || isApproveAll
 
         val color = if (approved) java.awt.Color(0x00AA00) else java.awt.Color(0xAA0000)
-        val footer = "${if (approved) "APPROVED" else "DENIED"} by ${event.user.name}"
+        val footer = when {
+            isApproveAll -> "ALWAYS ALLOWED by ${event.user.name}"
+            approved -> "APPROVED by ${event.user.name}"
+            else -> "DENIED by ${event.user.name}"
+        }
 
         // Acknowledge interaction + remove buttons + update embed colour
         event.deferEdit().queue()
@@ -109,7 +115,7 @@ class MessageListener(private val plugin: DogBerry) : ListenerAdapter() {
             event.hook.editOriginalComponents(emptyList()).queue()
         }
 
-        plugin.approvalManager.resolve(approvalId, approved, event.user.name)
+        plugin.approvalManager.resolveInteraction(approvalId, customId, event.user.name)
     }
 
     private fun sendResponse(channel: TextChannel?, response: String) {

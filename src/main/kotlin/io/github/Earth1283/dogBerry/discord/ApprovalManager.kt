@@ -15,6 +15,9 @@ import java.util.concurrent.TimeUnit
 class ApprovalManager(private val plugin: DogBerry) {
 
     private val pending = ConcurrentHashMap<String, CompletableFuture<Boolean>>()
+    private val pendingCommands = ConcurrentHashMap<String, CompletableFuture<CommandApprovalResult>>()
+
+    enum class CommandApprovalResult { ALLOW, DENY, ALLOW_ALL, TIMEOUT }
 
     /** Called from ToolDispatcher as the requestHumanApproval tool handler. */
     fun requestApprovalTool(args: JsonObject): JsonObject {
@@ -85,5 +88,68 @@ class ApprovalManager(private val plugin: DogBerry) {
         val future = pending.remove(approvalId) ?: return
         plugin.logger.info("Approval $approvalId: ${if (approved) "APPROVED" else "DENIED"} by $approverName")
         future.complete(approved)
+    }
+
+    fun requestCommandApproval(command: String): CommandApprovalResult {
+        val approvalId = UUID.randomUUID().toString()
+        val future = CompletableFuture<CommandApprovalResult>()
+        pendingCommands[approvalId] = future
+
+        val channelId = plugin.cfg.discordChannelId("server-admin")
+        if (channelId == null) {
+            pendingCommands.remove(approvalId)
+            plugin.logger.warning("requestCommandApproval: discord.channels.server-admin not configured")
+            return CommandApprovalResult.DENY
+        }
+
+        val jda = plugin.discord.jda ?: run {
+            pendingCommands.remove(approvalId)
+            return CommandApprovalResult.DENY
+        }
+
+        val channel = jda.getTextChannelById(channelId) ?: run {
+            pendingCommands.remove(approvalId)
+            plugin.logger.warning("requestCommandApproval: channel $channelId not found")
+            return CommandApprovalResult.DENY
+        }
+
+        val baseCommand = command.trim().split(" ").firstOrNull() ?: command
+
+        val embed = EmbedBuilder()
+            .setTitle("Command Approval Required")
+            .setDescription("**DogBerry wants to run:** `$command`")
+            .setColor(Color(0xFF9900.toInt()))
+            .setFooter("Approval ID: $approvalId | Times out in 10 minutes")
+            .build()
+
+        channel.sendMessageEmbeds(embed)
+            .setActionRow(
+                Button.danger("deny:$approvalId", "Deny"),
+                Button.success("approve:$approvalId", "Allow"),
+                Button.primary("approve-all:$approvalId", "Allow all future /$baseCommand")
+            )
+            .queue()
+
+        return try {
+            future.get(10, TimeUnit.MINUTES)
+        } catch (_: Exception) {
+            pendingCommands.remove(approvalId)
+            CommandApprovalResult.TIMEOUT
+        }
+    }
+
+    fun resolveInteraction(approvalId: String, customId: String, approverName: String) {
+        if (pendingCommands.containsKey(approvalId)) {
+            val result = when {
+                customId.startsWith("approve-all:") -> CommandApprovalResult.ALLOW_ALL
+                customId.startsWith("approve:") -> CommandApprovalResult.ALLOW
+                else -> CommandApprovalResult.DENY
+            }
+            plugin.logger.info("Command Approval $approvalId: $result by $approverName")
+            pendingCommands.remove(approvalId)?.complete(result)
+        } else if (pending.containsKey(approvalId)) {
+            val approved = customId.startsWith("approve:") || customId.startsWith("approve-all:")
+            resolve(approvalId, approved, approverName)
+        }
     }
 }
