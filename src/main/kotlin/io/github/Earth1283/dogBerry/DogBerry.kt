@@ -19,6 +19,7 @@ import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.player.PlayerJoinEvent
 import org.bukkit.event.player.PlayerQuitEvent
+import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.plugin.java.JavaPlugin
 import java.io.File
 import java.util.UUID
@@ -50,9 +51,9 @@ class DogBerry : JavaPlugin(), Listener {
     val playerJoinTimes = ConcurrentHashMap<UUID, Long>()
 
     override fun onEnable() {
-        // Load configuration — copyDefaults writes any keys missing from the
-        // existing file (e.g. after a plugin update adds new options)
-        saveDefaultConfig()
+        // Load configuration safely. If config.yml is broken, it's moved to .broken
+        // and a fresh default is created.
+        loadConfigSafely()
         config.options().copyDefaults(true)
         saveConfig()
         cfg = DogBerryConfig(config)
@@ -62,6 +63,8 @@ class DogBerry : JavaPlugin(), Listener {
             logger.warning("DogBerry configuration issues:")
             errors.forEach { logger.warning("  - $it") }
             logger.warning("Edit plugins/DogBerry/config.yml to fix these. DogBerry will start but may not function.")
+        } else {
+            logger.info("Configuration loaded and validated.")
         }
 
         // Core components
@@ -125,7 +128,7 @@ class DogBerry : JavaPlugin(), Listener {
 
         sender.sendMessage(mm("<gold><bold>DogBerry</bold></gold> <yellow>Reloading config...</yellow>"))
 
-        reloadConfig()
+        loadConfigSafely(sender)
         config.options().copyDefaults(true)
         saveConfig()
         cfg = DogBerryConfig(config)
@@ -135,6 +138,9 @@ class DogBerry : JavaPlugin(), Listener {
         sender.sendMessage(mm(
             "  <gray>LLM:</gray> <white>${cfg.llmProvider}</white> <dark_gray>($model)</dark_gray>"
         ))
+        if (cfg.llmProvider == "gemini" && cfg.geminiFallbackApiKeys.isNotEmpty()) {
+            sender.sendMessage(mm("    <dark_gray>↳ Fallbacks:</dark_gray> <white>${cfg.geminiFallbackApiKeys.size}</white> <dark_gray>keys (${cfg.geminiFallbackKeyOrder})</dark_gray>"))
+        }
 
         val rbac = cfg.rbac
         val defaultDesc = when (rbac.defaultAllowedTools) {
@@ -144,8 +150,11 @@ class DogBerry : JavaPlugin(), Listener {
         }
         sender.sendMessage(mm(
             "  <gray>RBAC:</gray> <white>${rbac.tierCount}</white> <dark_gray>tier(s),</dark_gray>" +
-            " <white>${rbac.roleMappingCount}</white> <dark_gray>role mapping(s), default:</dark_gray> $defaultDesc"
+            " <white>${rbac.roleMappingCount}</white> <dark_gray>role mapping(s), default:</dark_gray> <white>${rbac.defaultTierName}</white> <dark_gray>($defaultDesc)</dark_gray>"
         ))
+        if (rbac.tierNames.isNotEmpty()) {
+            sender.sendMessage(mm("    <dark_gray>↳ Tiers:</dark_gray> <white>${rbac.tierNames.joinToString(", ")}</white>"))
+        }
 
         val mon = cfg.monitoring
         val monDesc = if (mon.enabled)
@@ -153,15 +162,23 @@ class DogBerry : JavaPlugin(), Listener {
         else
             "<red>disabled</red>"
         sender.sendMessage(mm("  <gray>Monitoring:</gray> $monDesc"))
+        if (mon.enabled) {
+            sender.sendMessage(mm("    <dark_gray>↳ Alerts:</dark_gray> <yellow>TPS < ${mon.thresholds.tpsWarning}</yellow>/<red>${mon.thresholds.tpsCritical}</red> " +
+                                  "<dark_gray>| RAM > </dark_gray><yellow>${mon.thresholds.memoryWarningPercent}%</yellow>/<red>${mon.thresholds.memoryCriticalPercent}%</red>"))
+        }
 
         sender.sendMessage(mm(
             "  <gray>Timers:</gray> <white>max ${cfg.timersMaxConcurrent}</white>" +
             " <dark_gray>concurrent, up to</dark_gray> <white>${cfg.timersMaxDurationSeconds / 3600}h</white>"
         ))
 
+        sender.sendMessage(mm("  <gray>Discord:</gray> <white>${cfg.discordGuildId}</white> <dark_gray>(prefix: ${cfg.discordTriggerPrefix})</dark_gray>"))
+        sender.sendMessage(mm("  <gray>Allowlists:</gray> <white>${cfg.fetchAllowlist.size}</white> <dark_gray>domains,</dark_gray> <white>${cfg.safeCommandPrefixes.size}</white> <dark_gray>cmd prefixes</dark_gray>"))
+
         sender.sendMessage(mm(
             "  <gray>Dev tools:</gray> " +
-            if (cfg.devToolsEnabled) "<green>enabled</green>" else "<yellow>disabled</yellow>"
+            (if (cfg.devToolsEnabled) "<green>enabled</green>" else "<yellow>disabled</yellow>") +
+            " <dark_gray>(path: ${cfg.devToolsPluginSrcPath})</dark_gray>"
         ))
 
         // ── Validation ────────────────────────────────────────────────────────
@@ -181,6 +198,43 @@ class DogBerry : JavaPlugin(), Listener {
             sender.sendMessage(mm("  <dark_gray>Monitoring service restarted.</dark_gray>"))
         }
 
+        return true
+    }
+
+    private fun loadConfigSafely(sender: CommandSender? = null): Boolean {
+        val configFile = File(dataFolder, "config.yml")
+        if (!configFile.exists()) {
+            saveDefaultConfig()
+            reloadConfig()
+            return true
+        }
+
+        try {
+            // We use a fresh YamlConfiguration to test the file without
+            // polluting the plugin's main config object yet.
+            val testConfig = YamlConfiguration()
+            testConfig.load(configFile)
+        } catch (e: Exception) {
+            val brokenFile = File(dataFolder, "config.yml.broken")
+            configFile.renameTo(brokenFile)
+
+            val msg = "<red><bold>KERNEL PANIC!</bold> Your config.yml has invalid YAML syntax.</red>"
+            val subMsg = "<gray>The broken file was moved to <white>config.yml.broken</white> and a fresh default was created.</gray>"
+
+            if (sender != null) {
+                sender.sendMessage(mm(msg))
+                sender.sendMessage(mm(subMsg))
+            } else {
+                logger.severe("KERNEL PANIC! config.yml is invalid.")
+                logger.severe("Renamed to config.yml.broken and loaded defaults.")
+            }
+
+            saveDefaultConfig()
+            reloadConfig()
+            return false
+        }
+
+        reloadConfig()
         return true
     }
 

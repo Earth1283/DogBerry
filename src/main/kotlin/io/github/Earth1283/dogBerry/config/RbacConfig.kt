@@ -43,18 +43,20 @@ class RbacConfig(section: ConfigurationSection?) {
 
     val tierCount: Int get() = tiers.size
     val roleMappingCount: Int get() = roleMap.size
+    val tierNames: Set<String> get() = tiers.keys
+
+    /**
+     * The name of the default tier (as specified in config).
+     */
+    val defaultTierName: String = section?.getString("default-tier", "none") ?: "none"
 
     /**
      * Default tool access for users whose Discord roles have no mapping.
-     * Derived from `default-tier`. "none"/blank → empty set (deny all).
      */
-    val defaultAllowedTools: Set<String>? = run {
-        val defaultTier = section?.getString("default-tier", "none") ?: "none"
-        when {
-            defaultTier.isBlank() || defaultTier == "none" -> emptySet()
-            defaultTier == "*" -> null
-            else -> tiers[defaultTier]  // null if tier itself is "*"
-        }
+    val defaultAllowedTools: Set<String>? = when {
+        defaultTierName.isBlank() || defaultTierName == "none" -> emptySet()
+        defaultTierName == "*" -> null
+        else -> tiers[defaultTierName]
     }
 
     /**
