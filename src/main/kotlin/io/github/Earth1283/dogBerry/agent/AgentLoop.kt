@@ -34,6 +34,7 @@ class AgentLoop(private val plugin: DogBerry) {
         )
 
         var depth = 0
+        var accumulatedText = ""
 
         try {
             while (depth <= cfg.geminiMaxToolDepth) {
@@ -67,19 +68,25 @@ class AgentLoop(private val plugin: DogBerry) {
                 contents.add(modelContent)
 
                 val functionCalls = modelContent.parts.filter { it.functionCall != null }
+                val textParts = modelContent.parts.mapNotNull { it.text }.joinToString("\n").trim()
+
+                if (textParts.isNotEmpty()) {
+                    if (accumulatedText.isNotEmpty()) accumulatedText += "\n\n"
+                    accumulatedText += textParts
+                }
 
                 if (functionCalls.isEmpty()) {
-                    // No tool calls — extract final text and return
-                    val text = modelContent.parts
-                        .mapNotNull { it.text }
-                        .joinToString("\n")
-                        .trim()
-                    replyHandler(text.ifBlank { "(no response)" })
+                    // No tool calls — return accumulated text
+                    replyHandler(accumulatedText.ifBlank { "(no response)" })
                     return
                 }
 
                 if (depth >= cfg.geminiMaxToolDepth) {
-                    replyHandler("Reached maximum tool depth (${cfg.geminiMaxToolDepth}). Stopping.")
+                    if (accumulatedText.isNotEmpty()) {
+                        replyHandler("$accumulatedText\n\n[Warning] Reached maximum tool depth (${cfg.geminiMaxToolDepth}). Stopping.")
+                    } else {
+                        replyHandler("Reached maximum tool depth (${cfg.geminiMaxToolDepth}). Stopping.")
+                    }
                     return
                 }
 
@@ -100,7 +107,11 @@ class AgentLoop(private val plugin: DogBerry) {
                 depth++
             }
 
-            replyHandler("Reached maximum tool depth (${cfg.geminiMaxToolDepth}). Stopping.")
+            if (accumulatedText.isNotEmpty()) {
+                replyHandler("$accumulatedText\n\n[Warning] Reached maximum tool depth (${cfg.geminiMaxToolDepth}). Stopping.")
+            } else {
+                replyHandler("Reached maximum tool depth (${cfg.geminiMaxToolDepth}). Stopping.")
+            }
 
         } catch (e: InterruptedException) {
             Thread.currentThread().interrupt()

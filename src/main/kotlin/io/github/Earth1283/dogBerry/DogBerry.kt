@@ -11,6 +11,7 @@ import io.github.Earth1283.dogBerry.tools.ToolDispatcher
 import io.github.Earth1283.dogBerry.tools.memory.MemoryStore
 import io.github.Earth1283.dogBerry.tools.time.TimerManager
 import io.github.Earth1283.dogBerry.agent.CostTracker
+import io.github.Earth1283.dogBerry.agent.AgentLoop
 import io.github.Earth1283.dogBerry.monitoring.MonitoringService
 import net.kyori.adventure.text.minimessage.MiniMessage
 import org.bukkit.command.Command
@@ -46,6 +47,8 @@ class DogBerry : JavaPlugin(), Listener {
         private set
     lateinit var monitoringService: MonitoringService
         private set
+    lateinit var agentLoop: AgentLoop
+        private set
 
     /** Maps player UUID → join timestamp (ms). Thread-safe. */
     val playerJoinTimes = ConcurrentHashMap<UUID, Long>()
@@ -78,9 +81,12 @@ class DogBerry : JavaPlugin(), Listener {
         timerManager = TimerManager(cfg.timersMaxConcurrent, cfg.timersMaxDurationSeconds)
         approvalManager = ApprovalManager(this)
         toolDispatcher = ToolDispatcher(this)
+        agentLoop = AgentLoop(this)
 
         // Register Bukkit event listener for join-time tracking
         server.pluginManager.registerEvents(this, this)
+        val now = System.currentTimeMillis()
+        server.onlinePlayers.forEach { playerJoinTimes[it.uniqueId] = now }
 
         // Start Discord bot asynchronously to avoid blocking server startup
         server.scheduler.runTaskAsynchronously(this) { _ ->
@@ -121,8 +127,33 @@ class DogBerry : JavaPlugin(), Listener {
             sender.sendMessage("You don't have permission to use this command.")
             return true
         }
-        if (args.isEmpty() || args[0] != "reload") {
-            sender.sendMessage(mm("<red>Usage: /dogberry reload</red>"))
+        if (args.isEmpty()) {
+            sender.sendMessage(mm("<red>Usage: /db [reload | status | <prompt>]</red>"))
+            return true
+        }
+
+        val subCommand = args[0].lowercase()
+
+        if (subCommand == "status") {
+            val stats = io.github.Earth1283.dogBerry.tools.server.GetServerStatsTool(this).execute(kotlinx.serialization.json.buildJsonObject {})
+            val tps = String.format("%.1f", stats["tps1min"]?.toString()?.toDoubleOrNull() ?: 0.0)
+            val memUsed = String.format("%.0f", stats["memUsedMb"]?.toString()?.toDoubleOrNull() ?: 0.0)
+            val memMax = String.format("%.0f", stats["memMaxMb"]?.toString()?.toDoubleOrNull() ?: 0.0)
+            val players = stats["onlinePlayers"]?.toString() ?: "0"
+            sender.sendMessage(mm("<gold><bold>DogBerry Status</bold></gold>"))
+            sender.sendMessage(mm("<gray>TPS:</gray> <white>$tps</white> <dark_gray>|</dark_gray> <gray>RAM:</gray> <white>${memUsed}MB / ${memMax}MB</white> <dark_gray>|</dark_gray> <gray>Players:</gray> <white>$players</white>"))
+            return true
+        }
+
+        if (subCommand != "reload") {
+            // Treat as prompt
+            val prompt = args.joinToString(" ")
+            sender.sendMessage(mm("<gray><i>Thinking...</i></gray>"))
+            server.scheduler.runTaskAsynchronously(this, Runnable {
+                agentLoop.invoke("[${sender.name}] $prompt", null) { response ->
+                    sender.sendMessage(mm("<gold>[DogBerry]</gold> <white>$response</white>"))
+                }
+            })
             return true
         }
 
@@ -197,6 +228,12 @@ class DogBerry : JavaPlugin(), Listener {
             monitoringService.start()
             sender.sendMessage(mm("  <dark_gray>Monitoring service restarted.</dark_gray>"))
         }
+
+        geminiClient = when (cfg.llmProvider) {
+            "openrouter" -> OpenRouterClient(cfg)
+            else -> GeminiClient(cfg)
+        }
+        toolDispatcher = ToolDispatcher(this)
 
         return true
     }

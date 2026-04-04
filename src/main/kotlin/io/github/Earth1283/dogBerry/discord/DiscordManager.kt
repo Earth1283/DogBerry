@@ -46,7 +46,11 @@ class DiscordManager(private val plugin: DogBerry) {
         guild.updateCommands()
             .addCommands(
                 Commands.slash("dogberry", "Invoke DogBerry with a prompt")
-                    .addOption(OptionType.STRING, "prompt", "What should DogBerry do?", true)
+                    .addOption(OptionType.STRING, "prompt", "What should DogBerry do?", true),
+                Commands.slash("status", "Get server performance stats"),
+                Commands.slash("players", "List online players"),
+                Commands.slash("logs", "Fetch recent server logs")
+                    .addOption(OptionType.INTEGER, "lines", "Number of lines to fetch (default 100, max 500)", false)
             )
             .queue { plugin.logger.info("Slash commands registered in guild $guildId") }
     }

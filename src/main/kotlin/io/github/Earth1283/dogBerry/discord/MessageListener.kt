@@ -2,7 +2,17 @@ package io.github.Earth1283.dogBerry.discord
 
 import io.github.Earth1283.dogBerry.DogBerry
 import io.github.Earth1283.dogBerry.agent.AgentLoop
+import io.github.Earth1283.dogBerry.tools.server.GetServerStatsTool
+import io.github.Earth1283.dogBerry.tools.server.GetPlayerListTool
+import io.github.Earth1283.dogBerry.tools.server.GetRecentLogsTool
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import net.dv8tion.jda.api.EmbedBuilder
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel
+import java.io.File
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent
@@ -52,17 +62,13 @@ class MessageListener(private val plugin: DogBerry) : ListenerAdapter() {
         // Show typing indicator and dispatch to async task
         channel.sendTyping().queue()
         plugin.server.scheduler.runTaskAsynchronously(plugin) { _ ->
-            agentLoop.invoke("[$authorName] $userMessage", allowedTools) { response ->
+            plugin.agentLoop.invoke("[$authorName] $userMessage", allowedTools) { response ->
                 sendResponse(channel as? TextChannel, response)
             }
         }
     }
 
     override fun onSlashCommandInteraction(event: SlashCommandInteractionEvent) {
-        if (event.name != "dogberry") return
-
-        val prompt = event.getOption("prompt")?.asString ?: return
-
         // RBAC: resolve which tools this user is allowed to use
         val member = event.member
         val allowedTools = if (member != null) {
@@ -75,12 +81,86 @@ class MessageListener(private val plugin: DogBerry) : ListenerAdapter() {
             return
         }
 
-        event.deferReply().queue()
+        when (event.name) {
+            "dogberry" -> {
+                val prompt = event.getOption("prompt")?.asString ?: return
+                event.deferReply().queue()
+                plugin.server.scheduler.runTaskAsynchronously(plugin) { _ ->
+                    plugin.agentLoop.invoke("[${event.user.name}] $prompt", allowedTools) { response ->
+                        splitMessage(response).forEach { chunk ->
+                            event.hook.sendMessage(chunk).queue()
+                        }
+                    }
+                }
+            }
+            "status" -> {
+                event.deferReply().queue()
+                plugin.server.scheduler.runTaskAsynchronously(plugin) { _ ->
+                    val stats = GetServerStatsTool(plugin).execute(buildJsonObject {})
+                    val tps = String.format("%.1f", stats["tps1min"]?.jsonPrimitive?.content?.toDoubleOrNull() ?: 0.0)
+                    val memUsed = String.format("%.0f", stats["memUsedMb"]?.jsonPrimitive?.content?.toDoubleOrNull() ?: 0.0)
+                    val memMax = String.format("%.0f", stats["memMaxMb"]?.jsonPrimitive?.content?.toDoubleOrNull() ?: 0.0)
+                    val uptime = stats["uptimeSeconds"]?.jsonPrimitive?.content?.toLongOrNull() ?: 0L
+                    val players = stats["onlinePlayers"]?.jsonPrimitive?.content ?: "0"
 
-        plugin.server.scheduler.runTaskAsynchronously(plugin) { _ ->
-            agentLoop.invoke("[${event.user.name}] $prompt", allowedTools) { response ->
-                splitMessage(response).forEach { chunk ->
-                    event.hook.sendMessage(chunk).queue()
+                    val embed = EmbedBuilder()
+                        .setTitle("DogBerry Status")
+                        .setColor(java.awt.Color.GREEN)
+                        .addField("TPS", tps, true)
+                        .addField("RAM", "${memUsed}MB / ${memMax}MB", true)
+                        .addField("Players", players, true)
+                        .addField("Uptime", "${uptime / 3600}h ${(uptime % 3600) / 60}m", true)
+                        .build()
+
+                    event.hook.sendMessageEmbeds(embed).queue()
+                }
+            }
+            "players" -> {
+                event.deferReply().queue()
+                plugin.server.scheduler.runTaskAsynchronously(plugin) { _ ->
+                    val listData = GetPlayerListTool(plugin).execute(buildJsonObject {})
+                    val count = listData["count"]?.jsonPrimitive?.content ?: "0"
+                    val playersArr = listData["players"]?.jsonArray
+
+                    val embed = EmbedBuilder()
+                        .setTitle("Online Players ($count)")
+                        .setColor(java.awt.Color.CYAN)
+
+                    if (playersArr != null && playersArr.isNotEmpty()) {
+                        val sb = StringBuilder()
+                        playersArr.forEach { p ->
+                            val obj = p.jsonObject
+                            val name = obj["name"]?.jsonPrimitive?.content
+                            val ping = obj["ping"]?.jsonPrimitive?.content
+                            sb.append("`$name` (${ping}ms)\n")
+                        }
+                        embed.setDescription(sb.toString().take(4096))
+                    } else {
+                        embed.setDescription("No players online.")
+                    }
+
+                    event.hook.sendMessageEmbeds(embed.build()).queue()
+                }
+            }
+            "logs" -> {
+                event.deferReply().queue()
+                plugin.server.scheduler.runTaskAsynchronously(plugin) { _ ->
+                    val lines = event.getOption("lines")?.asInt ?: 100
+                    val args = buildJsonObject { put("n", lines) }
+                    val serverRoot = plugin.server.worldContainer.parentFile ?: File(".")
+                    val logsObj = GetRecentLogsTool(serverRoot).execute(args)
+                    val linesArr = logsObj["lines"]?.jsonArray
+
+                    if (linesArr != null && linesArr.isNotEmpty()) {
+                        val sb = StringBuilder()
+                        linesArr.forEach { line -> sb.append(line.jsonPrimitive.content).append("\n") }
+                        val content = sb.toString()
+                        val truncated = if (content.length > 1900) "..." + content.takeLast(1900) else content
+                        event.hook.sendMessage("```log\n$truncated\n```").queue()
+                    } else {
+                        val err = logsObj["error"]?.jsonPrimitive?.content ?: "Could not fetch logs or logs are empty."
+                        event.hook.sendMessage(err).queue()
+                    }
                 }
             }
         }

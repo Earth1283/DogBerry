@@ -8,8 +8,9 @@ description: Autonomous Minecraft server management agent powered by Gemini AI.
 
 commands:
   dogberry:
-    description: Reload DogBerry configuration.
-    usage: /dogberry reload
+    description: DogBerry AI management and interaction.
+    usage: /db [reload | status | <prompt>]
+    aliases: [db]
     permission: dogberry.admin
 
 permissions:
