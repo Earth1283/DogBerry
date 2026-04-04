@@ -9,7 +9,7 @@ gemini:
   fallback-api-keys: []
   # Order in which fallback keys are tried: sequential | random
   fallback-key-order: "sequential"
-  model: "gemini-2.5-flash-preview-04-17"
+  model: "gemini-2.5-flash"
   # Maximum number of tool-call rounds per invocation before force-stopping
   max-tool-depth: 20
   # Alert in #dogberry-internal if a single invocation exceeds this cost (USD)
@@ -20,7 +20,7 @@ openrouter:
   api-key: ""
   # Any model slug available on OpenRouter, e.g. google/gemini-2.5-flash-preview
   model: "google/gemini-2.5-flash-preview"
-  max-tokens: 16000
+  max-tokens: 6000
 
 discord:
   # Bot token from https://discord.com/developers/applications
@@ -174,7 +174,7 @@ monitoring:
   # Set to false to disable all proactive monitoring
   enabled: true
   # How often to check server health (in seconds)
-  check-interval-seconds: 30
+  check-interval-seconds: 120
   # Discord channel ID to post alerts to. Leave blank to use server-admin channel.
   alert-channel: ""
   # Minimum seconds between repeated alerts of the same type (prevents spam)
