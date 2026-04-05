@@ -82,6 +82,30 @@ object ToolRegistry {
             parameters = emptyObject()
         ),
         FunctionDeclaration(
+            name = "getWorldInfo",
+            description = "Returns per-world information for all loaded worlds: entity count, " +
+                    "loaded chunk count, difficulty, time-of-day, weather, and key gamerules " +
+                    "(keepInventory, doFireTick, mobGriefing, doDaylightCycle). " +
+                    "Use this to diagnose TPS issues caused by entity or chunk overload.",
+            parameters = emptyObject()
+        ),
+        FunctionDeclaration(
+            name = "getEntityCounts",
+            description = "Returns entity counts grouped by type for a specific world or all worlds, " +
+                    "sorted by count descending (top 20 types). Use after getWorldInfo reveals high entity count " +
+                    "to identify which mob type is causing lag.",
+            parameters = buildJsonObject {
+                put("type", "object")
+                putJsonObject("properties") {
+                    putJsonObject("world") {
+                        put("type", "string")
+                        put("description", "World name to query (e.g. 'world', 'world_nether'). Omit for all worlds.")
+                    }
+                }
+                putJsonArray("required") { }
+            }
+        ),
+        FunctionDeclaration(
             name = "kickPlayer",
             description = "Kicks an online player from the server with a reason. " +
                     "Calls requestHumanApproval automatically before executing.",

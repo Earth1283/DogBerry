@@ -13,6 +13,7 @@ import io.github.Earth1283.dogBerry.tools.time.TimerManager
 import io.github.Earth1283.dogBerry.agent.CostTracker
 import io.github.Earth1283.dogBerry.agent.AgentLoop
 import io.github.Earth1283.dogBerry.monitoring.MonitoringService
+import io.github.Earth1283.dogBerry.monitoring.PlayerEventForwarder
 import net.kyori.adventure.text.minimessage.MiniMessage
 import org.bukkit.command.Command
 import org.bukkit.command.CommandSender
@@ -46,6 +47,8 @@ class DogBerry : JavaPlugin(), Listener {
     lateinit var timerManager: TimerManager
         private set
     lateinit var monitoringService: MonitoringService
+        private set
+    lateinit var playerEventForwarder: PlayerEventForwarder
         private set
     lateinit var agentLoop: AgentLoop
         private set
@@ -83,8 +86,10 @@ class DogBerry : JavaPlugin(), Listener {
         toolDispatcher = ToolDispatcher(this)
         agentLoop = AgentLoop(this)
 
-        // Register Bukkit event listener for join-time tracking
+        // Register Bukkit event listeners
         server.pluginManager.registerEvents(this, this)
+        playerEventForwarder = PlayerEventForwarder(this)
+        server.pluginManager.registerEvents(playerEventForwarder, this)
         val now = System.currentTimeMillis()
         server.onlinePlayers.forEach { playerJoinTimes[it.uniqueId] = now }
 
@@ -92,6 +97,7 @@ class DogBerry : JavaPlugin(), Listener {
         server.scheduler.runTaskAsynchronously(this) { _ ->
             discord = DiscordManager(this)
             discord.start()
+            playerEventForwarder.start()
             monitoringService = MonitoringService(this)
             monitoringService.start()
         }
@@ -101,7 +107,9 @@ class DogBerry : JavaPlugin(), Listener {
 
     override fun onDisable() {
         if (::monitoringService.isInitialized) monitoringService.stop()
+        if (::playerEventForwarder.isInitialized) playerEventForwarder.stop()
         if (::timerManager.isInitialized) timerManager.cancelAll(this)
+        if (::agentLoop.isInitialized) agentLoop.shutdown()
         if (::discord.isInitialized) discord.shutdown()
         if (::memory.isInitialized) memory.close()
         logger.info("DogBerry offline.")
@@ -150,7 +158,7 @@ class DogBerry : JavaPlugin(), Listener {
             val prompt = args.joinToString(" ")
             sender.sendMessage(mm("<gray><i>Thinking...</i></gray>"))
             server.scheduler.runTaskAsynchronously(this, Runnable {
-                agentLoop.invoke("[${sender.name}] $prompt", null) { response ->
+                agentLoop.invoke("[${sender.name}] $prompt", null, sender.name) { response ->
                     sender.sendMessage(mm("<gold>[DogBerry]</gold> <white>$response</white>"))
                 }
             })

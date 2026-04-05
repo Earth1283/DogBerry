@@ -52,6 +52,9 @@ class DogBerryConfig(private val cfg: FileConfiguration) {
     val devToolsPluginSrcPath: String get() = cfg.getString("dev-tools.plugin-src-path", "plugins/src")!!
     val devToolsBuildTimeoutSeconds: Long get() = cfg.getLong("dev-tools.build-timeout-seconds", 120L)
 
+    // Tool execution timeout
+    val toolsDefaultTimeoutSeconds: Long get() = cfg.getLong("tools.default-timeout-seconds", 30L)
+
     // RBAC — re-parsed each time DogBerryConfig is constructed (i.e. on hot-reload)
     val rbac: RbacConfig = RbacConfig(cfg.getConfigurationSection("rbac"))
 

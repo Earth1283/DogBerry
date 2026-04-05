@@ -50,7 +50,18 @@ class DiscordManager(private val plugin: DogBerry) {
                 Commands.slash("status", "Get server performance stats"),
                 Commands.slash("players", "List online players"),
                 Commands.slash("logs", "Fetch recent server logs")
-                    .addOption(OptionType.INTEGER, "lines", "Number of lines to fetch (default 100, max 500)", false)
+                    .addOption(OptionType.INTEGER, "lines", "Number of lines to fetch (default 100, max 500)", false),
+                Commands.slash("ban", "Ban a player from the server")
+                    .addOption(OptionType.STRING, "player", "Player name to ban", true)
+                    .addOption(OptionType.STRING, "reason", "Ban reason", true),
+                Commands.slash("unban", "Unban a player")
+                    .addOption(OptionType.STRING, "player", "Player name to unban", true),
+                Commands.slash("whitelist-add", "Add a player to the whitelist")
+                    .addOption(OptionType.STRING, "player", "Player name to add", true),
+                Commands.slash("whitelist-remove", "Remove a player from the whitelist")
+                    .addOption(OptionType.STRING, "player", "Player name to remove", true),
+                Commands.slash("maintenance", "Toggle server maintenance mode (whitelist on/off + kick)")
+                    .addOption(OptionType.STRING, "state", "on or off", true)
             )
             .queue { plugin.logger.info("Slash commands registered in guild $guildId") }
     }

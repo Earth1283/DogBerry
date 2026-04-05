@@ -21,6 +21,15 @@ class WriteFileTool(
                 put("error", "Write access denied: path must be inside '${allowedRoot.relativeTo(serverRoot).path}'")
             }
 
+        // Pre-flight: ensure adequate disk space before writing
+        val availableBytes = (file.parentFile ?: file.absoluteFile.parentFile)?.usableSpace ?: Long.MAX_VALUE
+        val minFreeBytes = 500L * 1024L * 1024L  // 500 MB
+        if (availableBytes < minFreeBytes) {
+            return buildJsonObject {
+                put("error", "Insufficient disk space: only ${availableBytes / 1_048_576L}MB available (500MB minimum required). Free up space before writing.")
+            }
+        }
+
         return try {
             file.parentFile?.mkdirs()
             // Atomic write via temp file

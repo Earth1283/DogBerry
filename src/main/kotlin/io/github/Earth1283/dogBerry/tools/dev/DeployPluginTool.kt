@@ -26,6 +26,16 @@ class DeployPluginTool(private val plugin: DogBerry) {
                 put("error", "No compiled jar found for '$name'. Run buildPlugin first.")
             }
 
+        // Pre-flight: ensure adequate disk space before deploying
+        val pluginsDir = File(serverRoot, "plugins")
+        val availableBytes = pluginsDir.usableSpace
+        val minFreeBytes = 500L * 1024L * 1024L  // 500 MB
+        if (availableBytes < minFreeBytes) {
+            return buildJsonObject {
+                put("error", "Insufficient disk space: only ${availableBytes / 1_048_576L}MB available (500MB minimum required). Free up space before deploying.")
+            }
+        }
+
         // Mandatory approval gate — non-negotiable
         val approved = plugin.approvalManager.requestApproval(
             action = "Deploy plugin '$name' to server",

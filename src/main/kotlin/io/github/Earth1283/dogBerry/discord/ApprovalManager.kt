@@ -5,6 +5,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import net.dv8tion.jda.api.EmbedBuilder
+import net.dv8tion.jda.api.entities.Message
 import net.dv8tion.jda.api.interactions.components.buttons.Button
 import java.awt.Color
 import java.util.UUID
@@ -16,6 +17,7 @@ class ApprovalManager(private val plugin: DogBerry) {
 
     private val pending = ConcurrentHashMap<String, CompletableFuture<Boolean>>()
     private val pendingCommands = ConcurrentHashMap<String, CompletableFuture<CommandApprovalResult>>()
+    private val sentMessages = ConcurrentHashMap<String, Message>()
 
     enum class CommandApprovalResult { ALLOW, DENY, ALLOW_ALL, TIMEOUT }
 
@@ -37,6 +39,7 @@ class ApprovalManager(private val plugin: DogBerry) {
     /**
      * Posts an approval request to #server-admin and blocks the calling thread
      * until an admin clicks Approve or Deny, or the 10-minute timeout elapses.
+     * On timeout, edits the Discord message to show the timed-out state.
      */
     fun requestApproval(action: String, reason: String): Boolean {
         val approvalId = UUID.randomUUID().toString()
@@ -64,7 +67,7 @@ class ApprovalManager(private val plugin: DogBerry) {
         val embed = EmbedBuilder()
             .setTitle("Approval Required")
             .setDescription("**Action:** $action\n\n**Reason:** $reason")
-            .setColor(Color(0xFF9900.toInt()))
+            .setColor(Color(0xFF9900))
             .setFooter("Approval ID: $approvalId | Times out in 10 minutes")
             .build()
 
@@ -73,18 +76,28 @@ class ApprovalManager(private val plugin: DogBerry) {
                 Button.success("approve:$approvalId", "Approve"),
                 Button.danger("deny:$approvalId", "Deny")
             )
-            .queue()
+            .queue { msg -> sentMessages[approvalId] = msg }
 
         return try {
             future.get(10, TimeUnit.MINUTES)
         } catch (_: Exception) {
             pending.remove(approvalId)
+            // Edit the message to show it timed out and disable buttons
+            sentMessages.remove(approvalId)?.editMessageEmbeds(
+                EmbedBuilder()
+                    .setTitle("Approval Request — Timed Out")
+                    .setDescription("**Action:** $action\n\n**Reason:** $reason\n\n*No response within 10 minutes. Action cancelled.*")
+                    .setColor(Color.GRAY)
+                    .setFooter("Timed out")
+                    .build()
+            )?.setComponents(emptyList())?.queue()
             false
         }
     }
 
     /** Called by the button interaction handler. */
     fun resolve(approvalId: String, approved: Boolean, approverName: String) {
+        sentMessages.remove(approvalId)
         val future = pending.remove(approvalId) ?: return
         plugin.logger.info("Approval $approvalId: ${if (approved) "APPROVED" else "DENIED"} by $approverName")
         future.complete(approved)
@@ -118,7 +131,7 @@ class ApprovalManager(private val plugin: DogBerry) {
         val embed = EmbedBuilder()
             .setTitle("Command Approval Required")
             .setDescription("**DogBerry wants to run:** `$command`")
-            .setColor(Color(0xFF9900.toInt()))
+            .setColor(Color(0xFF9900))
             .setFooter("Approval ID: $approvalId | Times out in 10 minutes")
             .build()
 
@@ -128,12 +141,20 @@ class ApprovalManager(private val plugin: DogBerry) {
                 Button.success("approve:$approvalId", "Allow"),
                 Button.primary("approve-all:$approvalId", "Allow all future /$baseCommand")
             )
-            .queue()
+            .queue { msg -> sentMessages[approvalId] = msg }
 
         return try {
             future.get(10, TimeUnit.MINUTES)
         } catch (_: Exception) {
             pendingCommands.remove(approvalId)
+            sentMessages.remove(approvalId)?.editMessageEmbeds(
+                EmbedBuilder()
+                    .setTitle("Command Approval — Timed Out")
+                    .setDescription("**Command:** `$command`\n\n*No response within 10 minutes. Command cancelled.*")
+                    .setColor(Color.GRAY)
+                    .setFooter("Timed out")
+                    .build()
+            )?.setComponents(emptyList())?.queue()
             CommandApprovalResult.TIMEOUT
         }
     }
@@ -146,6 +167,7 @@ class ApprovalManager(private val plugin: DogBerry) {
                 else -> CommandApprovalResult.DENY
             }
             plugin.logger.info("Command Approval $approvalId: $result by $approverName")
+            sentMessages.remove(approvalId)
             pendingCommands.remove(approvalId)?.complete(result)
         } else if (pending.containsKey(approvalId)) {
             val approved = customId.startsWith("approve:") || customId.startsWith("approve-all:")

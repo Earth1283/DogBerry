@@ -98,6 +98,12 @@ safe-commands:
     - "version"
     - "pl"
 
+# Tool execution timeout
+# Maximum seconds a tool call is allowed to run before returning a timeout error.
+# Excludes tools that manage their own long-running timeouts (requestHumanApproval, buildPlugin, wakeMeUpIn).
+tools:
+  default-timeout-seconds: 30
+
 # Settings for AI-written plugin development
 dev-tools:
   # Set to false to disable writePlugin/buildPlugin/deployPlugin tools entirely
@@ -186,6 +192,12 @@ monitoring:
     # Alert when JVM memory usage exceeds these percentages
     memory-warning-percent: 80.0
     memory-critical-percent: 95.0
+    # Alert when total entity count across all worlds exceeds this value
+    entity-warning: 1500
+    # Alert when total loaded chunk count across all worlds exceeds this value
+    chunk-warning: 400
+    # Alert when average milliseconds per tick exceeds this value (50ms = 20 TPS budget)
+    mspt-warning: 45.0
   daily-digest:
     # Post a daily server summary embed
     enabled: true
@@ -193,3 +205,8 @@ monitoring:
     hour: 0
     # Channel for the digest. Leave blank to use alert-channel (or server-admin).
     channel: ""
+  # Forward player join/quit/death events to the server-logs Discord channel
+  player-events:
+    log-joins: true
+    log-quits: true
+    log-deaths: true

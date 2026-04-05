@@ -35,6 +35,16 @@ class MemoryStore(dbPath: String) {
                     cost_usd REAL NOT NULL
                 )
             """.trimIndent())
+            stmt.execute("""
+                CREATE TABLE IF NOT EXISTS audit_log (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    ts INTEGER NOT NULL,
+                    user TEXT,
+                    tool TEXT NOT NULL,
+                    args TEXT,
+                    result_summary TEXT
+                )
+            """.trimIndent())
         }
     }
 
@@ -153,6 +163,19 @@ class MemoryStore(dbPath: String) {
             totalUsd = total(),
             last7Days = last7
         )
+    }
+
+    fun logAudit(user: String?, tool: String, args: String, resultSummary: String) {
+        connection.prepareStatement(
+            "INSERT INTO audit_log (ts, user, tool, args, result_summary) VALUES (?, ?, ?, ?, ?)"
+        ).use { stmt ->
+            stmt.setLong(1, System.currentTimeMillis())
+            stmt.setString(2, user)
+            stmt.setString(3, tool)
+            stmt.setString(4, args.take(500))
+            stmt.setString(5, resultSummary.take(500))
+            stmt.execute()
+        }
     }
 
     fun close() {

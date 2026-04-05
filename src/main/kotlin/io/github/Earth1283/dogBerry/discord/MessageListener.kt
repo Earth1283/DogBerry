@@ -12,6 +12,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import net.dv8tion.jda.api.EmbedBuilder
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel
+import net.kyori.adventure.text.Component
 import java.io.File
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent
@@ -62,7 +63,7 @@ class MessageListener(private val plugin: DogBerry) : ListenerAdapter() {
         // Show typing indicator and dispatch to async task
         channel.sendTyping().queue()
         plugin.server.scheduler.runTaskAsynchronously(plugin) { _ ->
-            plugin.agentLoop.invoke("[$authorName] $userMessage", allowedTools) { response ->
+            plugin.agentLoop.invoke("[$authorName] $userMessage", allowedTools, authorName) { response ->
                 sendResponse(channel as? TextChannel, response)
             }
         }
@@ -86,7 +87,7 @@ class MessageListener(private val plugin: DogBerry) : ListenerAdapter() {
                 val prompt = event.getOption("prompt")?.asString ?: return
                 event.deferReply().queue()
                 plugin.server.scheduler.runTaskAsynchronously(plugin) { _ ->
-                    plugin.agentLoop.invoke("[${event.user.name}] $prompt", allowedTools) { response ->
+                    plugin.agentLoop.invoke("[${event.user.name}] $prompt", allowedTools, event.user.name) { response ->
                         splitMessage(response).forEach { chunk ->
                             event.hook.sendMessage(chunk).queue()
                         }
@@ -160,6 +161,132 @@ class MessageListener(private val plugin: DogBerry) : ListenerAdapter() {
                     } else {
                         val err = logsObj["error"]?.jsonPrimitive?.content ?: "Could not fetch logs or logs are empty."
                         event.hook.sendMessage(err).queue()
+                    }
+                }
+            }
+            "ban" -> {
+                val player = event.getOption("player")?.asString ?: return
+                val reason = event.getOption("reason")?.asString ?: "Banned via Discord"
+                event.deferReply().queue()
+                plugin.server.scheduler.runTaskAsynchronously(plugin) { _ ->
+                    val approved = plugin.approvalManager.requestApproval(
+                        action = "Permanently ban player '$player'",
+                        reason = reason
+                    )
+                    if (!approved) { event.hook.sendMessage("Action denied.").setEphemeral(true).queue(); return@runTaskAsynchronously }
+                    try {
+                        plugin.server.scheduler.callSyncMethod(plugin) {
+                            plugin.server.dispatchCommand(plugin.server.consoleSender, "ban $player $reason")
+                            plugin.server.getPlayerExact(player)?.kick(Component.text("Banned: $reason"))
+                        }.get()
+                        val msg = "Player `$player` banned by ${event.user.name} — $reason"
+                        event.hook.sendMessage(msg).queue()
+                        plugin.discord.postToChannel("server-logs", "BAN: $msg")
+                    } catch (e: Exception) {
+                        event.hook.sendMessage("Error: ${e.message}").queue()
+                    }
+                }
+            }
+            "unban" -> {
+                val player = event.getOption("player")?.asString ?: return
+                event.deferReply().queue()
+                plugin.server.scheduler.runTaskAsynchronously(plugin) { _ ->
+                    val approved = plugin.approvalManager.requestApproval(
+                        action = "Unban player '$player'",
+                        reason = "Requested by ${event.user.name} via Discord"
+                    )
+                    if (!approved) { event.hook.sendMessage("Action denied.").setEphemeral(true).queue(); return@runTaskAsynchronously }
+                    try {
+                        plugin.server.scheduler.callSyncMethod(plugin) {
+                            plugin.server.dispatchCommand(plugin.server.consoleSender, "pardon $player")
+                        }.get()
+                        val msg = "Player `$player` unbanned by ${event.user.name}"
+                        event.hook.sendMessage(msg).queue()
+                        plugin.discord.postToChannel("server-logs", "UNBAN: $msg")
+                    } catch (e: Exception) {
+                        event.hook.sendMessage("Error: ${e.message}").queue()
+                    }
+                }
+            }
+            "whitelist-add" -> {
+                val player = event.getOption("player")?.asString ?: return
+                event.deferReply().queue()
+                plugin.server.scheduler.runTaskAsynchronously(plugin) { _ ->
+                    val approved = plugin.approvalManager.requestApproval(
+                        action = "Add '$player' to whitelist",
+                        reason = "Requested by ${event.user.name} via Discord"
+                    )
+                    if (!approved) { event.hook.sendMessage("Action denied.").setEphemeral(true).queue(); return@runTaskAsynchronously }
+                    try {
+                        plugin.server.scheduler.callSyncMethod(plugin) {
+                            plugin.server.dispatchCommand(plugin.server.consoleSender, "whitelist add $player")
+                        }.get()
+                        val msg = "Player `$player` added to whitelist by ${event.user.name}"
+                        event.hook.sendMessage(msg).queue()
+                        plugin.discord.postToChannel("server-logs", "WHITELIST-ADD: $msg")
+                    } catch (e: Exception) {
+                        event.hook.sendMessage("Error: ${e.message}").queue()
+                    }
+                }
+            }
+            "whitelist-remove" -> {
+                val player = event.getOption("player")?.asString ?: return
+                event.deferReply().queue()
+                plugin.server.scheduler.runTaskAsynchronously(plugin) { _ ->
+                    val approved = plugin.approvalManager.requestApproval(
+                        action = "Remove '$player' from whitelist",
+                        reason = "Requested by ${event.user.name} via Discord"
+                    )
+                    if (!approved) { event.hook.sendMessage("Action denied.").setEphemeral(true).queue(); return@runTaskAsynchronously }
+                    try {
+                        plugin.server.scheduler.callSyncMethod(plugin) {
+                            plugin.server.dispatchCommand(plugin.server.consoleSender, "whitelist remove $player")
+                        }.get()
+                        val msg = "Player `$player` removed from whitelist by ${event.user.name}"
+                        event.hook.sendMessage(msg).queue()
+                        plugin.discord.postToChannel("server-logs", "WHITELIST-REMOVE: $msg")
+                    } catch (e: Exception) {
+                        event.hook.sendMessage("Error: ${e.message}").queue()
+                    }
+                }
+            }
+            "maintenance" -> {
+                val state = event.getOption("state")?.asString ?: return
+                val isOn = state.equals("on", ignoreCase = true)
+                event.deferReply().queue()
+                plugin.server.scheduler.runTaskAsynchronously(plugin) { _ ->
+                    val action = if (isOn)
+                        "Enable maintenance mode (whitelist on, kick non-whitelisted players)"
+                    else
+                        "Disable maintenance mode (whitelist off)"
+                    val approved = plugin.approvalManager.requestApproval(
+                        action = action,
+                        reason = "Requested by ${event.user.name} via /maintenance"
+                    )
+                    if (!approved) { event.hook.sendMessage("Action denied.").setEphemeral(true).queue(); return@runTaskAsynchronously }
+                    try {
+                        val kickedCount = plugin.server.scheduler.callSyncMethod(plugin) {
+                            if (isOn) {
+                                plugin.server.setWhitelist(true)
+                                val kickMsg = Component.text("Server is under maintenance. Check Discord for updates.")
+                                var count = 0
+                                plugin.server.onlinePlayers.forEach { p ->
+                                    if (!p.isWhitelisted) { p.kick(kickMsg); count++ }
+                                }
+                                count
+                            } else {
+                                plugin.server.setWhitelist(false)
+                                0
+                            }
+                        }.get()
+                        val msg = if (isOn)
+                            "Maintenance mode **enabled** by ${event.user.name}. Whitelist on. Kicked $kickedCount non-whitelisted player(s)."
+                        else
+                            "Maintenance mode **disabled** by ${event.user.name}. Whitelist off."
+                        event.hook.sendMessage(msg).queue()
+                        plugin.discord.postToChannel("server-logs", "MAINTENANCE: $msg")
+                    } catch (e: Exception) {
+                        event.hook.sendMessage("Error: ${e.message}").queue()
                     }
                 }
             }

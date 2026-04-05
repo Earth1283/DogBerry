@@ -11,7 +11,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 class MonitoringService(private val plugin: DogBerry) {
 
-    private enum class AlertType { TPS_WARNING, TPS_CRITICAL, MEMORY_WARNING, MEMORY_CRITICAL }
+    private enum class AlertType { TPS_WARNING, TPS_CRITICAL, MEMORY_WARNING, MEMORY_CRITICAL, ENTITY_WARNING, CHUNK_WARNING, MSPT_WARNING }
 
     private val lastAlertTime = ConcurrentHashMap<AlertType, Long>()
     private var monitorTask: BukkitTask? = null
@@ -23,6 +23,14 @@ class MonitoringService(private val plugin: DogBerry) {
     fun start() {
         val cfg = plugin.cfg.monitoring
         if (!cfg.enabled) return
+
+        // Load persisted cooldown timestamps so alerts don't re-fire after restarts
+        AlertType.entries.forEach { type ->
+            try {
+                plugin.memory.read("_sys:alert_cooldown:${type.name}")?.toLongOrNull()
+                    ?.let { lastAlertTime[type] = it }
+            } catch (_: Exception) { }
+        }
 
         val intervalTicks = cfg.checkIntervalSeconds * 20L
         monitorTask = plugin.server.scheduler.runTaskTimerAsynchronously(
@@ -55,6 +63,7 @@ class MonitoringService(private val plugin: DogBerry) {
         val cfg = plugin.cfg.monitoring
         val tps = plugin.server.tps  // Paper API — [1min, 5min, 15min]
         val tps1min = tps[0]
+        val mspt = plugin.server.averageTickTime
 
         val rt = Runtime.getRuntime()
         val memUsedMb = (rt.totalMemory() - rt.freeMemory()) / 1_048_576.0
@@ -94,6 +103,21 @@ class MonitoringService(private val plugin: DogBerry) {
                 }
         }
 
+        // MSPT (milliseconds per tick) — high MSPT causes lag even at 20 TPS
+        if (mspt > cfg.thresholds.msptWarning) {
+            maybeAlert(AlertType.MSPT_WARNING, now, cooldownMs) {
+                postEmbed(
+                    alertChannelId,
+                    "Tick Time Warning",
+                    "Average tick time is **%.1fms** (threshold: %.1fms). " +
+                        "The server tick budget is 50ms — high MSPT causes lag even when TPS appears normal.".format(
+                            mspt, cfg.thresholds.msptWarning
+                        ),
+                    Color(0xFF9900)
+                )
+            }
+        }
+
         // Memory — critical takes priority
         when {
             memPercent > cfg.thresholds.memoryCriticalPercent ->
@@ -119,12 +143,42 @@ class MonitoringService(private val plugin: DogBerry) {
                     )
                 }
         }
+
+        // Entity count warning
+        val totalEntities = plugin.server.worlds.sumOf { it.entityCount }
+        if (totalEntities > cfg.thresholds.entityWarning) {
+            maybeAlert(AlertType.ENTITY_WARNING, now, cooldownMs) {
+                postEmbed(
+                    alertChannelId,
+                    "Entity Count Warning",
+                    "Total entity count is **$totalEntities** (threshold: ${cfg.thresholds.entityWarning}). " +
+                        "This may cause TPS degradation. Use `getEntityCounts` to identify the culprit.",
+                    Color(0xFF9900)
+                )
+            }
+        }
+
+        // Loaded chunk warning
+        val totalChunks = plugin.server.worlds.sumOf { it.loadedChunks.size }
+        if (totalChunks > cfg.thresholds.chunkWarning) {
+            maybeAlert(AlertType.CHUNK_WARNING, now, cooldownMs) {
+                postEmbed(
+                    alertChannelId,
+                    "Loaded Chunk Warning",
+                    "Total loaded chunks: **$totalChunks** (threshold: ${cfg.thresholds.chunkWarning}). " +
+                        "Consider checking for players exploring large areas or chunk-loading mechanisms.",
+                    Color(0xFF9900)
+                )
+            }
+        }
     }
 
     private fun maybeAlert(type: AlertType, now: Long, cooldownMs: Long, action: () -> Unit) {
         val last = lastAlertTime[type] ?: 0L
         if (now - last >= cooldownMs) {
             lastAlertTime[type] = now
+            // Persist so cooldown survives plugin reloads and server restarts
+            try { plugin.memory.write("_sys:alert_cooldown:${type.name}", now.toString()) } catch (_: Exception) { }
             action()
         }
     }
@@ -151,6 +205,7 @@ class MonitoringService(private val plugin: DogBerry) {
         val channel = jda.getTextChannelById(digestChannelId) ?: return
 
         val tps = plugin.server.tps
+        val mspt = plugin.server.averageTickTime
         val rt = Runtime.getRuntime()
         val memUsedMb = (rt.totalMemory() - rt.freeMemory()) / 1_048_576.0
         val memMaxMb = rt.maxMemory() / 1_048_576.0
@@ -163,6 +218,7 @@ class MonitoringService(private val plugin: DogBerry) {
             .setTitle("Daily Server Digest")
             .addField("TPS (1m / 5m / 15m)",
                 "%.1f / %.1f / %.1f".format(tps[0], tps[1], tps[2]), false)
+            .addField("MSPT", "%.1fms".format(mspt), true)
             .addField("Memory",
                 "%.0f / %.0f MB (%.1f%%)".format(memUsedMb, memMaxMb, memPercent), true)
             .addField("Online Players", "$onlinePlayers", true)

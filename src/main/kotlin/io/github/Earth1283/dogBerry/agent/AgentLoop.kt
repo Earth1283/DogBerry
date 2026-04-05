@@ -6,6 +6,7 @@ import io.github.Earth1283.dogBerry.gemini.GeminiPart
 import io.github.Earth1283.dogBerry.tools.ToolDispatcher
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import java.util.concurrent.Executors
 
 class AgentLoop(private val plugin: DogBerry) {
 
@@ -16,11 +17,40 @@ class AgentLoop(private val plugin: DogBerry) {
     private val discord get() = plugin.discord
 
     /**
-     * Runs a full Gemini tool-call loop on the calling thread (must be async).
-     * [allowedTools] restricts which tools are exposed to the LLM. null = all tools.
-     * [replyHandler] is called exactly once with the final text response.
+     * Single-thread executor ensures all agent invocations are serialized — no concurrent
+     * LLM calls, tool executions, or memory writes racing each other.
      */
-    fun invoke(userMessage: String, allowedTools: Set<String>? = null, replyHandler: (String) -> Unit) {
+    private val invocationQueue = Executors.newSingleThreadExecutor { r ->
+        Thread(r, "DogBerry-AgentLoop").also { it.isDaemon = true }
+    }
+
+    /**
+     * Queues a Gemini tool-call loop for serial execution.
+     * Returns immediately; [replyHandler] is called from the invocation queue thread.
+     * [allowedTools] restricts which tools are exposed to the LLM. null = all tools.
+     * [user] is the Discord username or in-game name, used for audit logging.
+     */
+    fun invoke(
+        userMessage: String,
+        allowedTools: Set<String>? = null,
+        user: String? = null,
+        replyHandler: (String) -> Unit
+    ) {
+        invocationQueue.submit {
+            runInvocation(userMessage, allowedTools, user, replyHandler)
+        }
+    }
+
+    fun shutdown() {
+        invocationQueue.shutdown()
+    }
+
+    private fun runInvocation(
+        userMessage: String,
+        allowedTools: Set<String>?,
+        user: String?,
+        replyHandler: (String) -> Unit
+    ) {
         costTracker.resetInvocation()
 
         val toolDeclarations = if (allowedTools == null) {
@@ -94,7 +124,7 @@ class AgentLoop(private val plugin: DogBerry) {
                 val toolResponseParts = functionCalls.map { part ->
                     val call = part.functionCall!!
                     val result = try {
-                        toolDispatcher.dispatch(call.name, call.args)
+                        toolDispatcher.dispatch(call.name, call.args, user)
                     } catch (e: Exception) {
                         plugin.logger.warning("Tool '${call.name}' threw: ${e.message}")
                         buildJsonObject { put("error", e.message ?: "Unknown error") }
