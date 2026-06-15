@@ -20,8 +20,8 @@ data class SystemInstruction(
 
 @Serializable
 data class GeminiContent(
-    val role: String,
-    val parts: List<GeminiPart>
+    val role: String = "model",
+    val parts: List<GeminiPart> = emptyList()
 )
 
 /**
