@@ -8,7 +8,7 @@ Requires human approval before doing anything you'd actually regret.**
 
 ## What is DogBerry?
 
-DogBerry is a **Paper plugin** that gives your Minecraft server an AI sysadmin powered by **Google Gemini 2.5 Flash**. It connects to your Discord server, listens for commands, and uses function-calling AI to investigate problems, take action, and report back — all from inside the server JVM.
+DogBerry is a **Paper plugin** that gives your Minecraft server an AI sysadmin powered by **Google Gemini 3.1 Flash Lite**. It connects to your Discord server, listens for commands, and uses function-calling AI to investigate problems, take action, and report back — all from inside the server JVM.
 
 No Docker. No separate process. No Node.js. Drop the jar in `plugins/`, configure it, and it's online.
 
