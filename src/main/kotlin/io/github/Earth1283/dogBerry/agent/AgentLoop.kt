@@ -71,7 +71,7 @@ class AgentLoop(private val plugin: DogBerry) {
                 val response = try {
                     geminiClient.generateContent(
                         contents = contents,
-                        systemInstruction = SystemPrompt.build(),
+                        systemInstruction = SystemPrompt.build(plugin.dataFolder),
                         tools = toolDeclarations
                     )
                 } catch (e: Exception) {

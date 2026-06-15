@@ -62,6 +62,10 @@ class DogBerry : JavaPlugin(), Listener {
         loadConfigSafely()
         config.options().copyDefaults(true)
         saveConfig()
+
+        // Save default system_message.txt to the plugin folder if not already present.
+        // Server owners can edit this file to customise DogBerry's behaviour.
+        saveResource("system_message.txt", false)
         cfg = DogBerryConfig(config)
 
         val errors = cfg.validate()
