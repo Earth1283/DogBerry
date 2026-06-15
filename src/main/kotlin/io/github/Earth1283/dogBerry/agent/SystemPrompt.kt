@@ -17,9 +17,11 @@ object SystemPrompt {
         val body = if (customFile.exists()) {
             customFile.readText().trim()
         } else {
-            SystemPrompt::class.java.getResourceAsStream("/system_message.txt")
-                ?.bufferedReader()?.readText()?.trim()
-                ?: "(no system prompt found)"
+            val default = SystemPrompt::class.java.getResourceAsStream("/system_message.txt")
+                ?.bufferedReader()?.readText() ?: "(no system prompt found)"
+            // Recreate the missing file so admins can find and edit it
+            runCatching { customFile.writeText(default) }
+            default.trim()
         }
         return "Today's date: $today\n\n$body"
     }

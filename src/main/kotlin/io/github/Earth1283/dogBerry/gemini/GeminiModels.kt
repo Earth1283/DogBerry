@@ -1,5 +1,6 @@
 package io.github.Earth1283.dogBerry.gemini
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -31,6 +32,7 @@ data class GeminiContent(
 @Serializable
 data class GeminiPart(
     val text: String? = null,
+    val thought: Boolean? = null,
     val functionCall: FunctionCallPart? = null,
     val functionResponse: FunctionResponsePart? = null
 ) {
@@ -46,7 +48,10 @@ data class GeminiPart(
 @Serializable
 data class FunctionCallPart(
     val name: String,
-    val args: JsonObject = JsonObject(emptyMap())
+    val args: JsonObject = JsonObject(emptyMap()),
+    // Preserved verbatim from the API response so thinking-enabled models
+    // (e.g. gemini-3.1-flash-lite) don't reject the conversation history.
+    @SerialName("thought_signature") val thoughtSignature: String? = null
 )
 
 @Serializable
