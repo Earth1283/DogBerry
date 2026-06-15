@@ -55,6 +55,16 @@ class DogBerryConfig(private val cfg: FileConfiguration) {
     // Tool execution timeout
     val toolsDefaultTimeoutSeconds: Long get() = cfg.getLong("tools.default-timeout-seconds", 30L)
 
+    // Filesystem access
+    val fsRequireApprovalForWrites: Boolean get() = cfg.getBoolean("filesystem.require-approval-for-writes", true)
+    val fsRequireApprovalForDownloads: Boolean get() = cfg.getBoolean("filesystem.require-approval-for-downloads", true)
+    val fsMaxListEntries: Int get() = cfg.getInt("filesystem.max-list-entries", 500)
+    val fsMaxDownloadBytes: Long get() = cfg.getLong("filesystem.max-download-bytes", 52_428_800L) // 50 MB
+    val fsDownloadAllowlist: Set<String> get() = cfg.getStringList("filesystem.download-allowlist").toSet()
+    val fsWriteAllowedPaths: List<String> get() =
+        cfg.getStringList("filesystem.write-allowed-paths").ifEmpty { listOf(".") }
+    val fsAllowOverwrite: Boolean get() = cfg.getBoolean("filesystem.allow-overwrite", true)
+
     // RBAC — re-parsed each time DogBerryConfig is constructed (i.e. on hot-reload)
     val rbac: RbacConfig = RbacConfig(cfg.getConfigurationSection("rbac"))
 

@@ -6,6 +6,9 @@ import io.github.Earth1283.dogBerry.tools.dev.DeployPluginTool
 import io.github.Earth1283.dogBerry.tools.dev.GetGradleOutputTool
 import io.github.Earth1283.dogBerry.tools.dev.WritePluginTool
 import io.github.Earth1283.dogBerry.tools.discord.SendDiscordMessageTool
+import io.github.Earth1283.dogBerry.tools.filesystem.DownloadFileTool
+import io.github.Earth1283.dogBerry.tools.filesystem.FsWriteTool
+import io.github.Earth1283.dogBerry.tools.filesystem.ListDirTool
 import io.github.Earth1283.dogBerry.tools.filesystem.MiniGrepTool
 import io.github.Earth1283.dogBerry.tools.filesystem.ReadFileTool
 import io.github.Earth1283.dogBerry.tools.filesystem.WriteFileTool
@@ -61,6 +64,9 @@ class ToolDispatcher(private val plugin: DogBerry) {
     private val writeFile by lazy {
         WriteFileTool(serverRoot, File(serverRoot, plugin.cfg.devToolsPluginSrcPath))
     }
+    private val listDir by lazy { ListDirTool(plugin) }
+    private val fsWrite by lazy { FsWriteTool(plugin) }
+    private val downloadFile by lazy { DownloadFileTool(plugin, httpClient) }
 
     private val miniFetch by lazy { MiniFetchTool(plugin.cfg, httpClient) }
     private val miniSearch by lazy { MiniSearchTool(plugin.cfg, httpClient) }
@@ -93,7 +99,9 @@ class ToolDispatcher(private val plugin: DogBerry) {
     private val noTimeoutTools = setOf(
         "requestHumanApproval",  // blocks up to 10 minutes waiting for Discord button
         "buildPlugin",           // uses dev-tools.build-timeout-seconds internally
-        "wakeMeUpIn"             // schedules an async task and returns immediately
+        "wakeMeUpIn",            // schedules an async task and returns immediately
+        "fsWrite",               // may block on approval before writing
+        "downloadFile"           // may block on approval, then network I/O
     )
 
     fun dispatch(name: String, args: JsonObject, user: String? = null): JsonObject {
@@ -140,6 +148,9 @@ class ToolDispatcher(private val plugin: DogBerry) {
             "miniGrep" -> miniGrep.execute(args)
             "readFile" -> readFile.execute(args)
             "writeFile" -> writeFile.execute(args)
+            "listDir" -> listDir.execute(args)
+            "fsWrite" -> fsWrite.execute(args)
+            "downloadFile" -> downloadFile.execute(args)
 
             "miniSearch" -> miniSearch.execute(args)
             "miniFetch" -> miniFetch.execute(args)

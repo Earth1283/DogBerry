@@ -250,6 +250,77 @@ object ToolRegistry {
             }
         ),
 
+        FunctionDeclaration(
+            name = "listDir",
+            description = "Lists files and subdirectories at a path inside the server directory. " +
+                    "Returns name, type (file/dir), size, and last-modified for each entry. " +
+                    "Chrooted to server root — cannot escape.",
+            parameters = buildJsonObject {
+                put("type", "object")
+                putJsonObject("properties") {
+                    putJsonObject("path") {
+                        put("type", "string")
+                        put("description", "Path relative to server root to list. Defaults to '.' (server root).")
+                    }
+                }
+                putJsonArray("required") { }
+            }
+        ),
+        FunctionDeclaration(
+            name = "fsWrite",
+            description = "Writes or patches a file anywhere under the server root. " +
+                    "Requires human approval (via #server-admin) before executing. " +
+                    "Two modes: 'replace' (overwrite full content) or 'patch' (find-and-replace first occurrence). " +
+                    "Chrooted to server root and restricted to filesystem.write-allowed-paths.",
+            parameters = buildJsonObject {
+                put("type", "object")
+                putJsonObject("properties") {
+                    putJsonObject("path") {
+                        put("type", "string")
+                        put("description", "Path relative to server root.")
+                    }
+                    putJsonObject("mode") {
+                        put("type", "string")
+                        put("description", "'replace' to overwrite the full file content (default), or 'patch' to replace the first occurrence of 'search' with 'replace'.")
+                    }
+                    putJsonObject("content") {
+                        put("type", "string")
+                        put("description", "Full file content. Required for mode='replace'.")
+                    }
+                    putJsonObject("search") {
+                        put("type", "string")
+                        put("description", "Exact string to find in the file. Required for mode='patch'.")
+                    }
+                    putJsonObject("replace") {
+                        put("type", "string")
+                        put("description", "Replacement string. Required for mode='patch'.")
+                    }
+                }
+                putJsonArray("required") { add("path") }
+            }
+        ),
+        FunctionDeclaration(
+            name = "downloadFile",
+            description = "Downloads a URL to a file path inside the server directory (wget-like). " +
+                    "Requires human approval before executing. " +
+                    "Only allowlisted domains are permitted (filesystem.download-allowlist, falling back to fetch.allowlist). " +
+                    "Respects filesystem.max-download-bytes and filesystem.write-allowed-paths.",
+            parameters = buildJsonObject {
+                put("type", "object")
+                putJsonObject("properties") {
+                    putJsonObject("url") {
+                        put("type", "string")
+                        put("description", "URL to download. Must be on an allowlisted domain.")
+                    }
+                    putJsonObject("path") {
+                        put("type", "string")
+                        put("description", "Destination path relative to server root.")
+                    }
+                }
+                putJsonArray("required") { add("url"); add("path") }
+            }
+        ),
+
         // ── Network tools ────────────────────────────────────────────────────
         FunctionDeclaration(
             name = "miniSearch",

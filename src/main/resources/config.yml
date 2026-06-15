@@ -104,6 +104,25 @@ safe-commands:
 tools:
   default-timeout-seconds: 30
 
+# Filesystem access — controls listDir, fsWrite, and downloadFile tools
+filesystem:
+  # Require human approval (via #server-admin) before writing or patching any file.
+  require-approval-for-writes: true
+  # Require human approval before downloading a file to disk.
+  require-approval-for-downloads: true
+  # Maximum number of entries returned by listDir.
+  max-list-entries: 500
+  # Maximum file size DogBerry may download in bytes (default 50 MB).
+  max-download-bytes: 52428800
+  # Domains allowed for downloadFile. Leave empty to fall back to fetch.allowlist.
+  download-allowlist: []
+  # Path prefixes (relative to server root) DogBerry may write to via fsWrite/downloadFile.
+  # Use "." to allow anywhere under server root.
+  write-allowed-paths:
+    - "."
+  # Whether fsWrite and downloadFile may overwrite an existing file.
+  allow-overwrite: true
+
 # Settings for AI-written plugin development
 dev-tools:
   # Set to false to disable writePlugin/buildPlugin/deployPlugin tools entirely
@@ -121,9 +140,11 @@ dev-tools:
 # Tool names (use these in allowed-tools lists):
 #   Read-only:  getPlayerList, getServerStats, getRecentLogs, getDogberryCost,
 #               getPluginList, readMem, listMem, calc
-#   Moderate:   runSafeCommand, kickPlayer, miniGrep, readFile, miniSearch, miniFetch
+#   Moderate:   runSafeCommand, kickPlayer, miniGrep, readFile, listDir,
+#               miniSearch, miniFetch
 #   Admin:      banPlayer, unbanPlayer, addToWhitelist, removeFromWhitelist,
 #               writeMem, deleteMem, wakeMeUpIn, sendDiscordMessage,
+#               fsWrite, downloadFile,
 #               writeFile, writePlugin, buildPlugin, deployPlugin, getGradleOutput,
 #               requestHumanApproval
 #
