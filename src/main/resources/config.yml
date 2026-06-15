@@ -11,9 +11,9 @@ gemini:
   fallback-key-order: "sequential"
   model: "gemini-3.1-flash-lite"
   # Maximum number of tool-call rounds per invocation before force-stopping
-  max-tool-depth: 20
+  max-tool-depth: 10
   # Alert in #dogberry-internal if a single invocation exceeds this cost (USD)
-  cost-alert-usd: 0.10
+  cost-alert-usd: 0.02
 
 openrouter:
   # API key from https://openrouter.ai/keys

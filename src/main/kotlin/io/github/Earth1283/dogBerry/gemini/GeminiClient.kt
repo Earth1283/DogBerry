@@ -35,6 +35,13 @@ class GeminiClient(private val cfg: DogBerryConfig) : LlmClient {
         var lastException: GeminiApiException? = null
 
         for (attempt in keys.indices) {
+            if (attempt > 0) {
+                // Exponential backoff with jitter before trying next key after a quota error.
+                val baseMs = minOf(1000L shl (attempt - 1), 16_000L)
+                val jitter = java.util.concurrent.ThreadLocalRandom.current().nextLong(500)
+                Thread.sleep(baseMs + jitter)
+            }
+
             val idx = if (isRandom && attempt > 0) {
                 val remaining = keys.indices.toMutableSet().apply { removeAll(triedIndices) }
                 remaining.random()
