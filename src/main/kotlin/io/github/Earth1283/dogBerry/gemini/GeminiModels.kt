@@ -34,7 +34,11 @@ data class GeminiPart(
     val text: String? = null,
     val thought: Boolean? = null,
     val functionCall: FunctionCallPart? = null,
-    val functionResponse: FunctionResponsePart? = null
+    val functionResponse: FunctionResponsePart? = null,
+    // Preserved verbatim from the API response so thinking-enabled models
+    // (e.g. gemini-3 family) don't reject the conversation history on the next turn.
+    // Sibling of functionCall on the Part object, not nested inside it.
+    @SerialName("thoughtSignature") val thoughtSignature: String? = null
 ) {
     companion object {
         fun text(t: String) = GeminiPart(text = t)
@@ -48,10 +52,7 @@ data class GeminiPart(
 @Serializable
 data class FunctionCallPart(
     val name: String,
-    val args: JsonObject = JsonObject(emptyMap()),
-    // Preserved verbatim from the API response so thinking-enabled models
-    // (e.g. gemini-3.1-flash-lite) don't reject the conversation history.
-    @SerialName("thought_signature") val thoughtSignature: String? = null
+    val args: JsonObject = JsonObject(emptyMap())
 )
 
 @Serializable
