@@ -41,7 +41,7 @@ class ApprovalManager(private val plugin: DogBerry) {
      * until an admin clicks Approve or Deny, or the 10-minute timeout elapses.
      * On timeout, edits the Discord message to show the timed-out state.
      */
-    fun requestApproval(action: String, reason: String): Boolean {
+    fun requestApproval(action: String, reason: String, diff: String? = null): Boolean {
         val approvalId = UUID.randomUUID().toString()
         val future = CompletableFuture<Boolean>()
         pending[approvalId] = future
@@ -64,12 +64,13 @@ class ApprovalManager(private val plugin: DogBerry) {
             return false
         }
 
-        val embed = EmbedBuilder()
+        val embedBuilder = EmbedBuilder()
             .setTitle("Approval Required")
             .setDescription("**Action:** $action\n\n**Reason:** $reason")
             .setColor(Color(0xFF9900))
             .setFooter("Approval ID: $approvalId | Times out in 10 minutes")
-            .build()
+        if (diff != null) embedBuilder.addField("Diff", formatDiffField(diff), false)
+        val embed = embedBuilder.build()
 
         channel.sendMessageEmbeds(embed)
             .setActionRow(
@@ -95,6 +96,13 @@ class ApprovalManager(private val plugin: DogBerry) {
         }
     }
 
+    /** Wraps a diff in a Discord-safe code block, truncating to stay under the 1024-char field limit. */
+    private fun formatDiffField(diff: String): String {
+        val maxBodyLen = 950
+        val body = if (diff.length > maxBodyLen) diff.take(maxBodyLen) + "\n…(truncated)" else diff
+        return "```diff\n$body\n```"
+    }
+
     /** Called by the button interaction handler. */
     fun resolve(approvalId: String, approved: Boolean, approverName: String) {
         sentMessages.remove(approvalId)
@@ -103,7 +111,7 @@ class ApprovalManager(private val plugin: DogBerry) {
         future.complete(approved)
     }
 
-    fun requestCommandApproval(command: String): CommandApprovalResult {
+    fun requestCommandApproval(command: String, reason: String): CommandApprovalResult {
         val approvalId = UUID.randomUUID().toString()
         val future = CompletableFuture<CommandApprovalResult>()
         pendingCommands[approvalId] = future
@@ -130,7 +138,7 @@ class ApprovalManager(private val plugin: DogBerry) {
 
         val embed = EmbedBuilder()
             .setTitle("Command Approval Required")
-            .setDescription("**DogBerry wants to run:** `$command`")
+            .setDescription("**DogBerry wants to run:** `$command`\n\n**Reason:** $reason")
             .setColor(Color(0xFF9900))
             .setFooter("Approval ID: $approvalId | Times out in 10 minutes")
             .build()
@@ -150,7 +158,7 @@ class ApprovalManager(private val plugin: DogBerry) {
             sentMessages.remove(approvalId)?.editMessageEmbeds(
                 EmbedBuilder()
                     .setTitle("Command Approval — Timed Out")
-                    .setDescription("**Command:** `$command`\n\n*No response within 10 minutes. Command cancelled.*")
+                    .setDescription("**Command:** `$command`\n\n**Reason:** $reason\n\n*No response within 10 minutes. Command cancelled.*")
                     .setColor(Color.GRAY)
                     .setFooter("Timed out")
                     .build()

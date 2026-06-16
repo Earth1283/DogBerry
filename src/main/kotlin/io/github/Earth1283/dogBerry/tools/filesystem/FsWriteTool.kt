@@ -1,6 +1,7 @@
 package io.github.Earth1283.dogBerry.tools.filesystem
 
 import io.github.Earth1283.dogBerry.DogBerry
+import io.github.Earth1283.dogBerry.util.DiffUtil
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -25,8 +26,10 @@ class FsWriteTool(private val plugin: DogBerry) {
         if (destFile.exists() && !plugin.cfg.fsAllowOverwrite && mode != "patch")
             return buildJsonObject { put("error", "File already exists and filesystem.allow-overwrite is false") }
 
+        var oldContent = ""
         val newContent = when (mode) {
             "replace" -> {
+                if (destFile.exists()) oldContent = readTextSafely(destFile)
                 args["content"]?.toString()?.removeSurrounding("\"")
                     ?: return buildJsonObject { put("error", "Missing 'content' argument for replace mode") }
             }
@@ -40,6 +43,7 @@ class FsWriteTool(private val plugin: DogBerry) {
                 val existing = destFile.readText()
                 if (!existing.contains(search))
                     return buildJsonObject { put("error", "Search string not found in file") }
+                oldContent = existing
                 existing.replaceFirst(search, replace)
             }
             else -> return buildJsonObject { put("error", "Unknown mode '$mode'. Use 'replace' or 'patch'") }
@@ -53,7 +57,8 @@ class FsWriteTool(private val plugin: DogBerry) {
             }
             val approved = plugin.approvalManager.requestApproval(
                 action = actionDesc,
-                reason = "DogBerry requested a filesystem write"
+                reason = "DogBerry requested a filesystem write",
+                diff = DiffUtil.lineDiff(oldContent, newContent)
             )
             if (!approved) return buildJsonObject { put("approved", false); put("error", "Write denied by admin") }
         }
@@ -76,6 +81,12 @@ class FsWriteTool(private val plugin: DogBerry) {
         } catch (e: Exception) {
             buildJsonObject { put("error", "Write failed: ${e.message}") }
         }
+    }
+
+    /** Reads a file as text for diffing, skipping anything too large or non-text to read safely. */
+    private fun readTextSafely(file: File): String {
+        if (file.length() > 2L * 1024 * 1024) return ""
+        return try { file.readText() } catch (_: Exception) { "" }
     }
 
     private fun isWriteAllowed(file: File): Boolean {

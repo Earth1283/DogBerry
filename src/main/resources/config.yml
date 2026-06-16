@@ -143,7 +143,7 @@ dev-tools:
 #   Moderate:   runSafeCommand, kickPlayer, miniGrep, readFile, listDir,
 #               miniSearch, miniFetch
 #   Admin:      banPlayer, unbanPlayer, addToWhitelist, removeFromWhitelist,
-#               writeMem, deleteMem, wakeMeUpIn, sendDiscordMessage,
+#               writeMem, deleteMem, wakeMeUpIn, sendDiscordMessage, sendServerMessage,
 #               fsWrite, downloadFile,
 #               writeFile, writePlugin, buildPlugin, deployPlugin, getGradleOutput,
 #               requestHumanApproval
@@ -176,6 +176,8 @@ rbac:
         - readMem
         - listMem
         - miniGrep
+        - readFile
+        - listDir
         - miniSearch
         - miniFetch
     admin:

@@ -41,6 +41,8 @@ object ToolRegistry {
             name = "runSafeCommand",
             description = "Executes a whitelisted server command and returns its output. " +
                     "Only safe, non-destructive commands are permitted (see config safe-commands). " +
+                    "Commands not on the whitelist may trigger a Discord approval request, which shows " +
+                    "your justification to the approving admin. " +
                     "NEVER use this for ban/kick/whitelist-remove — use requestHumanApproval for those.",
             parameters = buildJsonObject {
                 put("type", "object")
@@ -49,8 +51,13 @@ object ToolRegistry {
                         put("type", "string")
                         put("description", "The command to run, without the leading slash.")
                     }
+                    putJsonObject("reason") {
+                        put("type", "string")
+                        put("description", "Brief justification for why this command needs to run. " +
+                                "Shown to the admin if approval is required.")
+                    }
                 }
-                putJsonArray("required") { add("command") }
+                putJsonArray("required") { add("command"); add("reason") }
             }
         ),
         FunctionDeclaration(
@@ -513,6 +520,24 @@ object ToolRegistry {
                     }
                 }
                 putJsonArray("required") { add("name") }
+            }
+        ),
+
+        // ── Server chat tool ─────────────────────────────────────────────────
+        FunctionDeclaration(
+            name = "sendServerMessage",
+            description = "Broadcasts a message directly to the Minecraft server chat, visible to all " +
+                    "online players, prefixed with '[DogBerry]'. Use for in-game announcements " +
+                    "(maintenance notices, warnings, etc.) — not for talking to Discord.",
+            parameters = buildJsonObject {
+                put("type", "object")
+                putJsonObject("properties") {
+                    putJsonObject("message") {
+                        put("type", "string")
+                        put("description", "The chat message to broadcast to all online players.")
+                    }
+                }
+                putJsonArray("required") { add("message") }
             }
         ),
 

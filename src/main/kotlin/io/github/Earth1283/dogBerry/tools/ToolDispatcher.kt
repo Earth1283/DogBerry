@@ -30,6 +30,7 @@ import io.github.Earth1283.dogBerry.tools.server.GetRecentLogsTool
 import io.github.Earth1283.dogBerry.tools.server.GetServerStatsTool
 import io.github.Earth1283.dogBerry.tools.server.GetWorldInfoTool
 import io.github.Earth1283.dogBerry.tools.server.RunSafeCommandTool
+import io.github.Earth1283.dogBerry.tools.server.SendServerMessageTool
 import io.github.Earth1283.dogBerry.tools.time.WakeMeUpInTool
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
@@ -85,6 +86,7 @@ class ToolDispatcher(private val plugin: DogBerry) {
     private val getGradleOutput by lazy { GetGradleOutputTool(plugin) }
 
     private val sendDiscordMessage by lazy { SendDiscordMessageTool(plugin) }
+    private val sendServerMessage by lazy { SendServerMessageTool(plugin) }
     private val getDogberryCost by lazy { GetDogberryCostTool(plugin) }
 
     private val kickPlayer by lazy { KickPlayerTool(plugin) }
@@ -169,6 +171,7 @@ class ToolDispatcher(private val plugin: DogBerry) {
             "getGradleOutput" -> getGradleOutput.execute(args)
 
             "sendDiscordMessage" -> sendDiscordMessage.execute(args)
+            "sendServerMessage" -> sendServerMessage.execute(args)
             "getDogberryCost" -> getDogberryCost.execute(args)
 
             else -> buildJsonObject { put("error", "Unknown tool: $name") }

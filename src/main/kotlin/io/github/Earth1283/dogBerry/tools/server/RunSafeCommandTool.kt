@@ -15,6 +15,8 @@ class RunSafeCommandTool(private val plugin: DogBerry) {
     fun execute(args: JsonObject): JsonObject {
         val command = args["command"]?.toString()?.removeSurrounding("\"")
             ?: return buildJsonObject { put("error", "Missing 'command' argument") }
+        val reason = args["reason"]?.toString()?.removeSurrounding("\"")
+            ?: "No justification provided"
 
         // Validate against whitelist
         val allowed = plugin.cfg.safeCommandPrefixes.any { prefix ->
@@ -22,7 +24,7 @@ class RunSafeCommandTool(private val plugin: DogBerry) {
         }
         if (!allowed) {
             if (plugin.cfg.safeCommandApprovalMode) {
-                val result = plugin.approvalManager.requestCommandApproval(command)
+                val result = plugin.approvalManager.requestCommandApproval(command, reason)
                 when (result) {
                     ApprovalManager.CommandApprovalResult.ALLOW_ALL -> {
                         val baseCommand = command.trim().split(" ").firstOrNull() ?: command
