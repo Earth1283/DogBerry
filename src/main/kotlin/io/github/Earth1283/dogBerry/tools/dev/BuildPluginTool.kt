@@ -46,13 +46,23 @@ class BuildPluginTool(private val plugin: DogBerry) {
                 .redirectErrorStream(true)
                 .start()
 
-            val output = process.inputStream.bufferedReader().readText()
-            val exited = process.waitFor(timeout, TimeUnit.SECONDS)
+            // Drain output on a separate thread so a hung/silent process can't block this
+            // thread before waitFor's timeout ever gets a chance to run.
+            val outputBuilder = StringBuilder()
+            val readerThread = Thread {
+                try {
+                    process.inputStream.bufferedReader().forEachLine { outputBuilder.appendLine(it) }
+                } catch (_: Exception) { }
+            }.apply { isDaemon = true; start() }
 
+            val exited = process.waitFor(timeout, TimeUnit.SECONDS)
+            if (!exited) process.destroyForcibly()
+            readerThread.join(5_000)
+
+            val output = outputBuilder.toString()
             logFile.writeText(output)
 
             if (!exited) {
-                process.destroyForcibly()
                 return buildJsonObject {
                     put("success", false)
                     put("error", "Build timed out after ${timeout}s")

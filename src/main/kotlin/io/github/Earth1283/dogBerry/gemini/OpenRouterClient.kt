@@ -19,7 +19,8 @@ import java.time.Duration
 private data class OrRequest(
     val model: String,
     val messages: List<OrMessage>,
-    val tools: List<OrTool>? = null
+    val tools: List<OrTool>? = null,
+    @SerialName("max_tokens") val maxTokens: Int? = null
 )
 
 @Serializable
@@ -100,7 +101,9 @@ class OpenRouterClient(private val cfg: DogBerryConfig) : LlmClient {
             OrTool(function = OrFunctionDecl(decl.name, decl.description, decl.parameters))
         }.ifEmpty { null }
 
-        val requestBody = orJson.encodeToString(OrRequest(cfg.openRouterModel, messages, orTools))
+        val requestBody = orJson.encodeToString(
+            OrRequest(cfg.openRouterModel, messages, orTools, cfg.openRouterMaxTokens)
+        )
 
         val httpRequest = HttpRequest.newBuilder()
             .uri(URI.create("https://openrouter.ai/api/v1/chat/completions"))
@@ -130,27 +133,31 @@ class OpenRouterClient(private val cfg: DogBerryConfig) : LlmClient {
      *
      * Tool call IDs don't exist in Gemini format, so we generate them by
      * position and thread them through to the matching tool-response turns.
+     * Matching is positional (not by function name) since AgentLoop always
+     * responds to a turn's function calls in the same order they were made —
+     * matching by name would collide if the same tool is called twice in one turn.
      */
     private fun toOrMessages(systemInstruction: String, contents: List<GeminiContent>): List<OrMessage> {
         val messages = mutableListOf(OrMessage(role = "system", content = systemInstruction))
 
-        // Maps function name → tool-call ID for the most recent model turn.
+        // Tool-call IDs for the most recent model turn, in call order.
         // Cleared whenever we start a new model turn.
-        val pendingIds = mutableMapOf<String, String>()
+        var pendingIds = listOf<String>()
         var callCounter = 0
 
         for (content in contents) {
             when (content.role) {
                 "model" -> {
-                    pendingIds.clear()
                     val textParts = content.parts.mapNotNull { it.text }
                     val callParts = content.parts.mapNotNull { it.functionCall }
 
+                    val ids = mutableListOf<String>()
                     val toolCalls = callParts.map { fc ->
                         val id = "call_${callCounter++}"
-                        pendingIds[fc.name] = id
+                        ids += id
                         OrToolCall(id = id, function = OrFunctionCall(fc.name, fc.args.toString()))
                     }.ifEmpty { null }
+                    pendingIds = ids
 
                     messages += OrMessage(
                         role = "assistant",
@@ -164,12 +171,13 @@ class OpenRouterClient(private val cfg: DogBerryConfig) : LlmClient {
                     val responseParts = content.parts.mapNotNull { it.functionResponse }
 
                     if (responseParts.isNotEmpty()) {
-                        // Each function response becomes a separate "tool" message
-                        responseParts.forEach { fr ->
+                        // Each function response becomes a separate "tool" message,
+                        // matched to its tool_call by position.
+                        responseParts.forEachIndexed { index, fr ->
                             messages += OrMessage(
                                 role = "tool",
                                 content = fr.response.toString(),
-                                toolCallId = pendingIds[fr.name] ?: fr.name
+                                toolCallId = pendingIds.getOrNull(index) ?: fr.name
                             )
                         }
                     }

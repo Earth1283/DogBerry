@@ -98,7 +98,10 @@ class AgentLoop(private val plugin: DogBerry) {
                 contents.add(modelContent)
 
                 val functionCalls = modelContent.parts.filter { it.functionCall != null }
-                val textParts = modelContent.parts.mapNotNull { it.text }.joinToString("\n").trim()
+                // Exclude thought=true parts — those are the model's internal reasoning,
+                // kept in `contents` for thoughtSignature continuity but never shown to users.
+                val textParts = modelContent.parts.filter { it.thought != true }
+                    .mapNotNull { it.text }.joinToString("\n").trim()
 
                 if (textParts.isNotEmpty()) {
                     if (accumulatedText.isNotEmpty()) accumulatedText += "\n\n"

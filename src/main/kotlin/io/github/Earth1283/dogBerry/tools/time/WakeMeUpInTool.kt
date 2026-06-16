@@ -1,7 +1,6 @@
 package io.github.Earth1283.dogBerry.tools.time
 
 import io.github.Earth1283.dogBerry.DogBerry
-import io.github.Earth1283.dogBerry.agent.AgentLoop
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -15,13 +14,14 @@ class WakeMeUpInTool(private val plugin: DogBerry) {
 
         return try {
             val timerId = plugin.timerManager.schedule(plugin, seconds, note) { firedNote ->
-                // When timer fires, re-invoke agent loop with context
-                val agentLoop = AgentLoop(plugin)
+                // When timer fires, re-invoke the shared agent loop with context.
+                // Must reuse plugin.agentLoop (not a fresh AgentLoop) so this stays
+                // serialized with every other invocation on the single agent thread.
                 val message = "[Timer fired] $firedNote"
                 plugin.logger.info("Timer fired: $firedNote")
 
                 val channelId = plugin.cfg.discordChannelId("server-logs")
-                agentLoop.invoke(message) { response ->
+                plugin.agentLoop.invoke(message) { response ->
                     if (channelId != null) {
                         plugin.discord.postToChannelById(channelId, response)
                     } else {

@@ -1,7 +1,6 @@
 package io.github.Earth1283.dogBerry.discord
 
 import io.github.Earth1283.dogBerry.DogBerry
-import io.github.Earth1283.dogBerry.agent.AgentLoop
 import io.github.Earth1283.dogBerry.tools.server.GetServerStatsTool
 import io.github.Earth1283.dogBerry.tools.server.GetPlayerListTool
 import io.github.Earth1283.dogBerry.tools.server.GetRecentLogsTool
@@ -20,8 +19,6 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent
 import net.dv8tion.jda.api.hooks.ListenerAdapter
 
 class MessageListener(private val plugin: DogBerry) : ListenerAdapter() {
-
-    private val agentLoop = AgentLoop(plugin)
 
     override fun onMessageReceived(event: MessageReceivedEvent) {
         if (event.author.isBot) return

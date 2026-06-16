@@ -78,11 +78,14 @@ class MemoryStore(dbPath: String) {
 
     fun list(prefix: String? = null): List<String> {
         val sql = if (prefix != null)
-            "SELECT key FROM memory WHERE key LIKE ? ORDER BY key"
+            "SELECT key FROM memory WHERE key LIKE ? ESCAPE '\\' ORDER BY key"
         else
             "SELECT key FROM memory ORDER BY key"
         connection.prepareStatement(sql).use { stmt ->
-            if (prefix != null) stmt.setString(1, "${prefix.replace("%", "\\%")}%")
+            if (prefix != null) {
+                val escaped = prefix.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+                stmt.setString(1, "$escaped%")
+            }
             stmt.executeQuery().use { rs ->
                 val keys = mutableListOf<String>()
                 while (rs.next()) keys += rs.getString("key")
