@@ -218,12 +218,6 @@ class DogBerry : JavaPlugin(), Listener {
         sender.sendMessage(mm("  <gray>Discord:</gray> <white>${cfg.discordGuildId}</white> <dark_gray>(prefix: ${cfg.discordTriggerPrefix})</dark_gray>"))
         sender.sendMessage(mm("  <gray>Allowlists:</gray> <white>${cfg.fetchAllowlist.size}</white> <dark_gray>domains,</dark_gray> <white>${cfg.safeCommandPrefixes.size}</white> <dark_gray>cmd prefixes</dark_gray>"))
 
-        sender.sendMessage(mm(
-            "  <gray>Dev tools:</gray> " +
-            (if (cfg.devToolsEnabled) "<green>enabled</green>" else "<yellow>disabled</yellow>") +
-            " <dark_gray>(path: ${cfg.devToolsPluginSrcPath})</dark_gray>"
-        ))
-
         // ── Validation ────────────────────────────────────────────────────────
         val errors = cfg.validate()
         if (errors.isEmpty()) {

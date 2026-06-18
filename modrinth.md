@@ -100,7 +100,6 @@ DogBerry replies in Discord
 
 - `miniGrep(pattern, path)` — regex search across server files
 - `readFile(path)` — read any text file under the server root
-- `writeFile(path, content)` — write files (plugin staging area only)
 
 </details>
 

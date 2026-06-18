@@ -99,7 +99,7 @@ safe-commands:
 
 # Tool execution timeout
 # Maximum seconds a tool call is allowed to run before returning a timeout error.
-# Excludes tools that manage their own long-running timeouts (requestHumanApproval, buildPlugin, wakeMeUpIn).
+# Excludes tools that manage their own long-running timeouts (requestHumanApproval, wakeMeUpIn).
 tools:
   default-timeout-seconds: 30
 
