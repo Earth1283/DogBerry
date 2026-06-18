@@ -22,7 +22,6 @@ process or Docker setup required.
 
    @DogBerry check server health
    @DogBerry why are players lagging?
-   @DogBerry write a plugin that limits players to 4 hours per day
    !dog what have you cost me this month?
 
 Every destructive action (ban, kick, plugin deploy) requires explicit admin
@@ -51,7 +50,6 @@ Quick start
           server-admin: "CHANNEL_ID"
           server-logs: "CHANNEL_ID"
           dogberry-internal: "CHANNEL_ID"
-          plugin-releases: "CHANNEL_ID"
 
 4. **Restart** or run ``/dogberry reload``.
 
@@ -68,7 +66,6 @@ Requirements
 - Gemini API key
 - Discord bot token (with **Message Content Intent** enabled)
 - Serper.dev API key (optional, for web search)
-- JDK in ``PATH`` (optional, for AI-written plugin dev tools)
 
 Building from source
 ====================

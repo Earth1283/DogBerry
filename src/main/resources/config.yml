@@ -31,12 +31,11 @@ discord:
   # DogBerry also responds to @mentions regardless of prefix
   trigger-prefix: "!dog"
   # Map logical channel names → Discord channel IDs
-  # DogBerry uses these keys internally. You must fill in all four IDs.
+  # DogBerry uses these keys internally. You must fill in all three IDs.
   channels:
     server-admin: ""        # Where admins issue commands and receive approval requests
     server-logs: ""         # Automated incident reports and unprompted posts
     dogberry-internal: ""   # DogBerry's private journal (https://i.imgur.com/qmEpf.jpg)
-    plugin-releases: ""     # Announcements when new AI-written plugins are deployed
 
 # Serper.dev API key for miniSearch tool
 # Sign up at https://serper.dev — free tier available
@@ -123,17 +122,6 @@ filesystem:
   # Whether fsWrite and downloadFile may overwrite an existing file.
   allow-overwrite: true
 
-# Settings for AI-written plugin development
-dev-tools:
-  # Set to false to disable writePlugin/buildPlugin/deployPlugin tools entirely
-  enabled: true
-  # Directory where AI-written plugin projects are staged (relative to server root)
-  plugin-src-path: "plugins/src"
-  # Gradle build timeout in seconds
-  build-timeout-seconds: 120
-  # Dev tools require a JDK (not just JRE). If javac is not found in PATH,
-  # these tools will return a helpful error message instead of crashing.
-
 # Role-based access control
 # Controls which Discord users can invoke DogBerry and which tools they can use.
 #
@@ -144,9 +132,7 @@ dev-tools:
 #               miniSearch, miniFetch
 #   Admin:      banPlayer, unbanPlayer, addToWhitelist, removeFromWhitelist,
 #               writeMem, deleteMem, wakeMeUpIn, sendDiscordMessage, sendServerMessage,
-#               fsWrite, downloadFile,
-#               writeFile, writePlugin, buildPlugin, deployPlugin, getGradleOutput,
-#               requestHumanApproval
+#               fsWrite, downloadFile, requestHumanApproval
 #
 rbac:
   # Fallback tier for users whose Discord roles are not mapped below.

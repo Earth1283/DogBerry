@@ -1,17 +1,12 @@
 package io.github.Earth1283.dogBerry.tools
 
 import io.github.Earth1283.dogBerry.DogBerry
-import io.github.Earth1283.dogBerry.tools.dev.BuildPluginTool
-import io.github.Earth1283.dogBerry.tools.dev.DeployPluginTool
-import io.github.Earth1283.dogBerry.tools.dev.GetGradleOutputTool
-import io.github.Earth1283.dogBerry.tools.dev.WritePluginTool
 import io.github.Earth1283.dogBerry.tools.discord.SendDiscordMessageTool
 import io.github.Earth1283.dogBerry.tools.filesystem.DownloadFileTool
 import io.github.Earth1283.dogBerry.tools.filesystem.FsWriteTool
 import io.github.Earth1283.dogBerry.tools.filesystem.ListDirTool
 import io.github.Earth1283.dogBerry.tools.filesystem.MiniGrepTool
 import io.github.Earth1283.dogBerry.tools.filesystem.ReadFileTool
-import io.github.Earth1283.dogBerry.tools.filesystem.WriteFileTool
 import io.github.Earth1283.dogBerry.tools.math.CalcTool
 import io.github.Earth1283.dogBerry.tools.memory.DeleteMemTool
 import io.github.Earth1283.dogBerry.tools.memory.ListMemTool
@@ -62,9 +57,6 @@ class ToolDispatcher(private val plugin: DogBerry) {
 
     private val miniGrep by lazy { MiniGrepTool(serverRoot) }
     private val readFile by lazy { ReadFileTool(serverRoot) }
-    private val writeFile by lazy {
-        WriteFileTool(serverRoot, File(serverRoot, plugin.cfg.devToolsPluginSrcPath))
-    }
     private val listDir by lazy { ListDirTool(plugin) }
     private val fsWrite by lazy { FsWriteTool(plugin) }
     private val downloadFile by lazy { DownloadFileTool(plugin, httpClient) }
@@ -79,11 +71,6 @@ class ToolDispatcher(private val plugin: DogBerry) {
 
     private val wakeMeUpIn by lazy { WakeMeUpInTool(plugin) }
     private val calc by lazy { CalcTool() }
-
-    private val writePlugin by lazy { WritePluginTool(plugin) }
-    private val buildPlugin by lazy { BuildPluginTool(plugin) }
-    private val deployPlugin by lazy { DeployPluginTool(plugin) }
-    private val getGradleOutput by lazy { GetGradleOutputTool(plugin) }
 
     private val sendDiscordMessage by lazy { SendDiscordMessageTool(plugin) }
     private val sendServerMessage by lazy { SendServerMessageTool(plugin) }
@@ -100,7 +87,6 @@ class ToolDispatcher(private val plugin: DogBerry) {
      */
     private val noTimeoutTools = setOf(
         "requestHumanApproval",  // blocks up to 10 minutes waiting for Discord button
-        "buildPlugin",           // uses dev-tools.build-timeout-seconds internally
         "wakeMeUpIn",            // schedules an async task and returns immediately
         "fsWrite",               // may block on approval before writing
         "downloadFile"           // may block on approval, then network I/O
@@ -149,7 +135,6 @@ class ToolDispatcher(private val plugin: DogBerry) {
 
             "miniGrep" -> miniGrep.execute(args)
             "readFile" -> readFile.execute(args)
-            "writeFile" -> writeFile.execute(args)
             "listDir" -> listDir.execute(args)
             "fsWrite" -> fsWrite.execute(args)
             "downloadFile" -> downloadFile.execute(args)
@@ -164,11 +149,6 @@ class ToolDispatcher(private val plugin: DogBerry) {
 
             "wakeMeUpIn" -> wakeMeUpIn.execute(args)
             "calc" -> calc.execute(args)
-
-            "writePlugin" -> writePlugin.execute(args)
-            "buildPlugin" -> buildPlugin.execute(args)
-            "deployPlugin" -> deployPlugin.execute(args)
-            "getGradleOutput" -> getGradleOutput.execute(args)
 
             "sendDiscordMessage" -> sendDiscordMessage.execute(args)
             "sendServerMessage" -> sendServerMessage.execute(args)

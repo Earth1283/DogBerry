@@ -47,11 +47,6 @@ class DogBerryConfig(private val cfg: FileConfiguration) {
     val safeCommandPrefixes: List<String> get() =
         cfg.getStringList("safe-commands.whitelist-prefixes")
 
-    // Dev tools
-    val devToolsEnabled: Boolean get() = cfg.getBoolean("dev-tools.enabled", true)
-    val devToolsPluginSrcPath: String get() = cfg.getString("dev-tools.plugin-src-path", "plugins/src")!!
-    val devToolsBuildTimeoutSeconds: Long get() = cfg.getLong("dev-tools.build-timeout-seconds", 120L)
-
     // Tool execution timeout
     val toolsDefaultTimeoutSeconds: Long get() = cfg.getLong("tools.default-timeout-seconds", 30L)
 
@@ -79,7 +74,7 @@ class DogBerryConfig(private val cfg: FileConfiguration) {
         }
         if (discordToken.isBlank()) errors += "discord.token is not set"
         if (discordGuildId.isBlank()) errors += "discord.guild-id is not set"
-        listOf("server-admin", "server-logs", "dogberry-internal", "plugin-releases").forEach { ch ->
+        listOf("server-admin", "server-logs", "dogberry-internal").forEach { ch ->
             if (discordChannelId(ch).isNullOrBlank()) errors += "discord.channels.$ch is not set"
         }
         return errors

@@ -238,26 +238,6 @@ object ToolRegistry {
             }
         ),
         FunctionDeclaration(
-            name = "writeFile",
-            description = "Writes content to a file. ONLY allowed inside the plugin-src staging area " +
-                    "(configured as dev-tools.plugin-src-path). Use for writing AI-generated plugin source code.",
-            parameters = buildJsonObject {
-                put("type", "object")
-                putJsonObject("properties") {
-                    putJsonObject("path") {
-                        put("type", "string")
-                        put("description", "Path relative to server root (must be inside plugin-src-path).")
-                    }
-                    putJsonObject("content") {
-                        put("type", "string")
-                        put("description", "File content to write.")
-                    }
-                }
-                putJsonArray("required") { add("path"); add("content") }
-            }
-        ),
-
-        FunctionDeclaration(
             name = "listDir",
             description = "Lists files and subdirectories at a path inside the server directory. " +
                     "Returns name, type (file/dir), size, and last-modified for each entry. " +
@@ -452,77 +432,6 @@ object ToolRegistry {
             }
         ),
 
-        // ── Dev tools ────────────────────────────────────────────────────────
-        FunctionDeclaration(
-            name = "writePlugin",
-            description = "Creates a new Spigot plugin project with the given name and writes the provided " +
-                    "Kotlin source code into it. The project is staged in the plugin-src directory. " +
-                    "Follow-up with buildPlugin to compile it.",
-            parameters = buildJsonObject {
-                put("type", "object")
-                putJsonObject("properties") {
-                    putJsonObject("name") {
-                        put("type", "string")
-                        put("description", "Plugin name (letters, digits, dashes, underscores, max 32 chars).")
-                    }
-                    putJsonObject("kotlinCode") {
-                        put("type", "string")
-                        put("description", "Complete Kotlin source for the plugin's main class.")
-                    }
-                    putJsonObject("description") {
-                        put("type", "string")
-                        put("description", "Short description of what this plugin does (written to plugin.yml).")
-                    }
-                }
-                putJsonArray("required") { add("name"); add("kotlinCode") }
-            }
-        ),
-        FunctionDeclaration(
-            name = "buildPlugin",
-            description = "Runs 'gradlew shadowJar' in the named plugin's staged project directory. " +
-                    "Returns build success/failure and the last 30 lines of Gradle output.",
-            parameters = buildJsonObject {
-                put("type", "object")
-                putJsonObject("properties") {
-                    putJsonObject("name") {
-                        put("type", "string")
-                        put("description", "Plugin name to build.")
-                    }
-                }
-                putJsonArray("required") { add("name") }
-            }
-        ),
-        FunctionDeclaration(
-            name = "deployPlugin",
-            description = "Copies the compiled jar to the server's plugins directory. " +
-                    "ALWAYS calls requestHumanApproval first — this cannot be bypassed. " +
-                    "Build must succeed before deploying.",
-            parameters = buildJsonObject {
-                put("type", "object")
-                putJsonObject("properties") {
-                    putJsonObject("name") {
-                        put("type", "string")
-                        put("description", "Plugin name to deploy.")
-                    }
-                }
-                putJsonArray("required") { add("name") }
-            }
-        ),
-        FunctionDeclaration(
-            name = "getGradleOutput",
-            description = "Returns the full raw Gradle build output for the last buildPlugin run on the named plugin.",
-            parameters = buildJsonObject {
-                put("type", "object")
-                putJsonObject("properties") {
-                    putJsonObject("name") {
-                        put("type", "string")
-                        put("description", "Plugin name.")
-                    }
-                }
-                putJsonArray("required") { add("name") }
-            }
-        ),
-
         // ── Server chat tool ─────────────────────────────────────────────────
         FunctionDeclaration(
             name = "sendServerMessage",
@@ -545,7 +454,7 @@ object ToolRegistry {
         FunctionDeclaration(
             name = "sendDiscordMessage",
             description = "Posts a message to a configured Discord channel. " +
-                    "Channel names: server-admin, server-logs, dogberry-internal, plugin-releases.",
+                    "Channel names: server-admin, server-logs, dogberry-internal.",
             parameters = buildJsonObject {
                 put("type", "object")
                 putJsonObject("properties") {

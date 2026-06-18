@@ -59,15 +59,6 @@ tasks {
         filesMatching("plugin.yml") {
             expand(props)
         }
-        // Bundle Gradle wrapper for dev-tools plugin builds.
-        // gradle-wrapper.jar is renamed to .data so ShadowJar doesn't try to merge it as a jar.
-        // WritePluginTool renames it back to .jar on extraction.
-        from("gradle/wrapper") {
-            into("plugin-template/gradle/wrapper")
-            rename("gradle-wrapper.jar", "gradle-wrapper.jar.data")
-        }
-        from("gradlew") { into("plugin-template") }
-        from("gradlew.bat") { into("plugin-template") }
     }
 
     build {

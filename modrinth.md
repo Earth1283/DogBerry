@@ -1,8 +1,8 @@
 # DogBerry — AI-Powered Autonomous Minecraft Server Manager
 
 **An autonomous server management agent that lives in your `plugins/` folder.
-Connects to Discord. Monitors your server. Writes and deploys its own plugins.
-Requires human approval before doing anything you'd actually regret.**
+Connects to Discord. Monitors your server. Requires human approval before doing
+anything you'd actually regret.**
 
 ---
 
@@ -42,9 +42,6 @@ Full **Discord bot** (JDA 5) built into the plugin. Trigger with `@mention` or a
 - Log tailing and **regex search** across server files
 - Persistent **memory across restarts** — DogBerry remembers previous incidents, player history, and its own mistakes
 
-### ⚙️ AI Plugin Development
-DogBerry can **write, compile, and deploy Spigot plugins at runtime** using Kotlin and Gradle. You describe what you want; it writes the code, runs the build, and asks for your approval before touching `plugins/`. Requires a JDK in PATH; gracefully disabled on JRE-only servers.
-
 ### 🛡️ Safety-First Design
 Every destructive action goes through a mandatory approval gate:
 
@@ -52,7 +49,6 @@ Every destructive action goes through a mandatory approval gate:
 |---|---|
 | Ban / kick player | ✅ Always |
 | Whitelist changes | ✅ Always |
-| Deploy plugin | ✅ Always |
 | World edits | ✅ Always |
 | Safe commands (weather, time, say) | ❌ Direct execution |
 
@@ -133,18 +129,6 @@ DogBerry replies in Discord
 </details>
 
 <details>
-<summary><strong>Dev tools</strong></summary>
-
-Requires JDK in PATH.
-
-- `writePlugin(name, kotlinCode)` — stage a new Gradle/Kotlin plugin project
-- `buildPlugin(name)` — compile via Gradle
-- `deployPlugin(name)` — copy to `plugins/` after human approval
-- `getGradleOutput(name)` — inspect build logs
-
-</details>
-
-<details>
 <summary><strong>Discord & meta tools</strong></summary>
 
 - `sendDiscordMessage(channel, message)` — post to any configured channel by name
@@ -162,7 +146,6 @@ Requires JDK in PATH.
 - [Gemini API key](https://aistudio.google.com) (free tier available)
 - [Discord bot token](https://discord.com/developers/applications) with **Message Content Intent** enabled
 - [Serper.dev API key](https://serper.dev) (optional, for web search)
-- JDK in PATH (optional, for AI plugin dev tools)
 
 **Steps:**
 
@@ -184,7 +167,6 @@ discord:
     server-admin: "123456789"      # admins talk to DogBerry here
     server-logs: "123456789"       # incident reports posted here
     dogberry-internal: "123456789" # DogBerry's private journal
-    plugin-releases: "123456789"   # plugin deploy announcements
 ```
 
 Full configuration reference is in [`docs/DogBerry.rst`](https://github.com/Earth1283/DogBerry/blob/main/docs/DogBerry.rst).
@@ -210,9 +192,6 @@ Gemini 2.5 Flash is priced at $0.15/1M input tokens and $3.50/1M output tokens. 
 
 **Can it ban players without asking me?**
 No. Bans, kicks, whitelist changes, and plugin deployments always require an admin to click **Approve** in Discord. This is enforced in code, not just in the AI's instructions.
-
-**What if I don't have a JDK?**
-All features except the plugin dev tools (writePlugin, buildPlugin, deployPlugin) work fine on a JRE-only server. Dev tools return a clear error message if no JDK is found.
 
 **Is the jar safe to add to my server?**
 DogBerry shades and relocates all its dependencies (JDA, sqlite-jdbc, kotlinx-serialization, exp4j) to avoid conflicts with other plugins. It does not open any network ports or expose any external attack surface — all communication is outbound only (Discord, Gemini API).

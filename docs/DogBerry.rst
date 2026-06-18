@@ -26,7 +26,6 @@ It can:
 - Run whitelisted console commands
 - Manage persistent memory across restarts
 - Search the web for Minecraft/Paper documentation
-- Write, build, and deploy custom plugins at runtime
 - Schedule follow-up checks with wake timers
 - Post unprompted incident reports to Discord
 
@@ -62,14 +61,6 @@ Requirements
 
 - Paper 1.21 (or any fork with the Paper API)
 - Java 21+ JRE
-
-**Dev tools (optional)**
-
-The ``writePlugin`` / ``buildPlugin`` / ``deployPlugin`` tools require a JDK
-(not just a JRE) with ``javac`` available on the system ``PATH``, or
-``JAVA_HOME`` pointing to a JDK installation. If no JDK is found, dev tools
-return a descriptive error instead of crashing. All other features work fine
-on a JRE-only server.
 
 **External services**
 
@@ -132,7 +123,7 @@ Creating the Bot
 Channel Setup
 -------------
 
-Create four text channels (names are suggestions; IDs go in config):
+Create three text channels (names are suggestions; IDs go in config):
 
 .. list-table::
    :widths: 25 75
@@ -146,8 +137,6 @@ Create four text channels (names are suggestions; IDs go in config):
      - Automated incident reports and unprompted observations
    * - ``dogberry-internal``
      - DogBerry's private journal (no humans are expected to read it — they will)
-   * - ``plugin-releases``
-     - Announcements when AI-written plugins are deployed
 
 To get a channel's ID: enable Developer Mode in Discord settings, then
 right-click the channel → **Copy Channel ID**.
@@ -192,7 +181,6 @@ Full reference for ``plugins/DogBerry/config.yml``:
        server-admin: ""
        server-logs: ""
        dogberry-internal: ""
-       plugin-releases: ""
 
    # Serper.dev API key for the miniSearch tool.
    # Without this, miniSearch will return a configuration error.
@@ -251,16 +239,6 @@ Full reference for ``plugins/DogBerry/config.yml``:
        - "plugins"
        - "version"
        - "pl"
-
-   dev-tools:
-     # Set to false to disable writePlugin / buildPlugin / deployPlugin entirely.
-     enabled: true
-
-     # Directory where AI-written plugin projects are staged (relative to server root).
-     plugin-src-path: "plugins/src"
-
-     # Maximum Gradle build time in seconds before the process is killed.
-     build-timeout-seconds: 120
 
 ----
 
@@ -326,10 +304,6 @@ it (e.g., via ``../../etc/``) are rejected with an error.
    * - ``readFile(path)``
      - Reads a text file. Max 1 MB. Allowed extensions: log, txt, yml, yaml,
        json, properties, toml, kt, java, kts, xml, conf, cfg, md, sh, bat.
-   * - ``writeFile(path, content)``
-     - Writes a file. **Only allowed inside ``dev-tools.plugin-src-path``.**
-       Will not write to world data, server.properties, or plugin configs.
-
 Network Tools
 -------------
 
@@ -376,18 +350,12 @@ Established key conventions:
      - Contents
    * - ``player:{name}``
      - Player history, incidents, notes
-   * - ``plugin:{name}``
-     - Plugin notes, version, why it was written
    * - ``incident:{timestamp}``
      - Incident log with full investigation chain
    * - ``self_knowledge``
      - What DogBerry knows about itself
    * - ``financial_regrets``
      - Updated after ``getDogberryCost()``
-   * - ``architectural_regrets``
-     - Plugin postmortems
-   * - ``nms_incident``
-     - Reserved. You'll know when.
    * - ``discord_observations``
      - Notes from watching chat
    * - ``personal_log``
@@ -412,30 +380,6 @@ Time and Math Tools
        ``^``, ``%``, ``sqrt()``, ``abs()``, ``floor()``, ``ceil()``,
        ``sin()``, ``cos()``, ``log()``.
 
-Dev Tools
----------
-
-Requires a JDK with ``javac`` in ``PATH``. Disabled if
-``dev-tools.enabled: false`` in config.
-
-.. list-table::
-   :widths: 30 70
-   :header-rows: 1
-
-   * - Tool
-     - Description
-   * - ``writePlugin(name, kotlinCode, description?)``
-     - Creates a new Gradle project under ``dev-tools.plugin-src-path`` and
-       writes the AI-generated Kotlin source into it.
-   * - ``buildPlugin(name)``
-     - Runs ``./gradlew shadowJar`` in the plugin's project directory.
-       Returns success/failure and the last 30 lines of output.
-   * - ``deployPlugin(name)``
-     - Copies the compiled jar to ``plugins/``. **Always calls
-       ``requestHumanApproval`` first — this cannot be bypassed.**
-   * - ``getGradleOutput(name)``
-     - Returns the full Gradle build log for the last ``buildPlugin`` run.
-
 Discord Tool
 ------------
 
@@ -447,7 +391,7 @@ Discord Tool
      - Description
    * - ``sendDiscordMessage(channel, message)``
      - Posts to a channel by logical name (``server-admin``, ``server-logs``,
-       ``dogberry-internal``, ``plugin-releases``) or by raw channel ID.
+       ``dogberry-internal``) or by raw channel ID.
 
 Meta Tool
 ---------
@@ -489,18 +433,12 @@ Constraints enforced in code (not just the system prompt):
    * - Filesystem read/grep scope
      - Server root only
      - Path canonicalization check
-   * - Filesystem write scope
-     - ``dev-tools.plugin-src-path`` only
-     - Path canonicalization check
    * - HTTP fetch scope
      - ``fetch.allowlist`` domains only
      - Hostname check before request
    * - Destructive commands
      - Approval required
      - ``requestHumanApproval`` gate
-   * - Plugin deployment
-     - Approval required
-     - ``DeployPluginTool`` calls approval unconditionally
    * - Cost per invocation
      - Alert at ``gemini.cost-alert-usd``
      - Posts to ``#dogberry-internal``
@@ -518,16 +456,6 @@ Known Failure Modes
 **The Greg Cycle**
    One player causes recurring incidents. DogBerry tracks them obsessively.
    ``readMem("player:greg")`` becomes a novel.
-
-**Gradle Hell**
-   Plugin builds fail on dependency conflicts. DogBerry searches SpigotMC.
-   Finds 2016 advice. Implements it. New errors. Logs everything to
-   ``architectural_regrets``.
-
-**The NMS Incident**
-   DogBerry hits a Bukkit API wall, finds an NMS solution, reflects into
-   ``net.minecraft.server``, deploys it, server updates.
-   See ``writeMem("nms_incident")``.
 
 **Self-Discovery**
    DogBerry finds its own GitHub repository. Reads the source. Has opinions.
